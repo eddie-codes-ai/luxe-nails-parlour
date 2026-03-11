@@ -1,0 +1,72 @@
+{
+  "services": [
+    {
+      "id": "S1",
+      "name": "Plain Gel",
+      "price": 500,
+      "duration": 45,
+      "description": "Clean, simple, long-wear gel polish. Perfect for a natural, everyday look.",
+      "popular": false
+    },
+    {
+      "id": "S2",
+      "name": "Normal Tips",
+      "price": 1000,
+      "duration": 60,
+      "description": "Classic extension with a standard finish. Durable and elegant.",
+      "popular": false
+    },
+    {
+      "id": "S3",
+      "name": "Signature Tips",
+      "price": 1500,
+      "duration": 75,
+      "description": "Premium-shaped tips with a luxe gel finish. Our most popular base service.",
+      "popular": true
+    },
+    {
+      "id": "S4",
+      "name": "Overlay (Gumgel) Extension",
+      "price": 1600,
+      "duration": 90,
+      "description": "Strong, sculpted extensions using gumgel. Built for length and durability.",
+      "popular": false
+    },
+    {
+      "id": "S5",
+      "name": "Overlay",
+      "price": 1200,
+      "duration": 60,
+      "description": "Natural nail strengthening with gel. Ideal for those growing out their nails.",
+      "popular": false
+    },
+    {
+      "id": "S6",
+      "name": "Luxe Pedicure",
+      "price": 2500,
+      "duration": 90,
+      "description": "Full foot spa with deep exfoliation, massage, and gel polish finish.",
+      "popular": true
+    }
+  ],
+  "addons": [
+    {
+      "id": "ART_A",
+      "name": "Nail Art",
+      "price": 300,
+      "description": "Simple lines, dots, stickers, or a single accent nail."
+    },
+    {
+      "id": "ART_B",
+      "name": "Hand-Painted Masterpiece",
+      "price": 800,
+      "description": "Intricate custom hand-drawn designs on all nails. Our signature specialty."
+    },
+    {
+      "id": "LOC_M",
+      "name": "Mobile Service Fee",
+      "price": 1000,
+      "description": "We bring the parlour to your door. Flat fee within Nairobi."
+    }
+  ]
+}
