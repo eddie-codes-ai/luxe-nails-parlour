@@ -472,7 +472,7 @@ export default function BookingPage() {
                 opacity: 0.8,
               }}
             >
-              💳 <strong>Payment:</strong> M-Pesa payment will be collected at the time of your appointment. We'll send you the till number when we confirm your booking.
+              💳 <strong>Payment:</strong> M-Pesa or cash payment will be collected at the time of your appointment. We'll send you the till number for M-Pesa when we confirm your booking.
             </div>
 
             <div style={{ display: "flex", gap: "12px" }}>

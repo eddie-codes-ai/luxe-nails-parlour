@@ -55,8 +55,8 @@ export default function Footer() {
             }}>
               <div style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "#C5A358" }} />
               <span style={{ fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.05em", color: "rgba(253,251,247,0.6)" }}>
-                M-Pesa Payments Accepted
-              </span>
+                M-Pesa & Cash Payments Accepted
+            </span>
             </div>
           </div>
 
