@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 
 const artists = [
@@ -81,6 +81,14 @@ const colors = {
 export default function ArtistsPage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   return (
     <main style={{ backgroundColor: colors.cream, fontFamily: fonts.body, color: colors.espresso, minHeight: "100vh" }}>
@@ -116,9 +124,8 @@ export default function ArtistsPage() {
       {/* ── Artists List ── */}
       <section style={{ maxWidth: "900px", margin: "0 auto", padding: "80px 24px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
-          {artists.map((artist, index) => {
+          {artists.map((artist) => {
             const isHovered = hoveredCard === artist.id;
-            const isEven = index % 2 === 0;
 
             return (
               <article
@@ -126,9 +133,8 @@ export default function ArtistsPage() {
                 onMouseEnter={() => setHoveredCard(artist.id)}
                 onMouseLeave={() => setHoveredCard(null)}
                 style={{
-                  display: "grid",
-                  gridTemplateColumns: "200px 1fr",
-                  gap: "0",
+                  display: "flex",
+                  flexDirection: isMobile ? "column" : "row",
                   backgroundColor: "#fff",
                   border: isHovered ? `2px solid ${colors.gold}` : "2px solid transparent",
                   boxShadow: isHovered ? "0 12px 40px rgba(197,163,88,0.12)" : "0 4px 20px rgba(0,0,0,0.05)",
@@ -136,23 +142,23 @@ export default function ArtistsPage() {
                   overflow: "hidden",
                 }}
               >
-                {/* Left — Avatar Panel */}
+                {/* Avatar Panel */}
                 <div
                   style={{
                     backgroundColor: artist.accentColor,
                     display: "flex",
-                    flexDirection: "column",
+                    flexDirection: isMobile ? "row" : "column",
                     alignItems: "center",
-                    justifyContent: "center",
-                    padding: "40px 20px",
+                    justifyContent: isMobile ? "flex-start" : "center",
+                    padding: isMobile ? "24px 20px" : "40px 20px",
                     gap: "16px",
+                    minWidth: isMobile ? "auto" : "180px",
                   }}
                 >
-                  {/* Initials Circle */}
                   <div
                     style={{
-                      width: "80px",
-                      height: "80px",
+                      width: isMobile ? "60px" : "80px",
+                      height: isMobile ? "60px" : "80px",
                       borderRadius: "50%",
                       backgroundColor: "rgba(255,255,255,0.15)",
                       border: "2px solid rgba(255,255,255,0.4)",
@@ -160,15 +166,16 @@ export default function ArtistsPage() {
                       alignItems: "center",
                       justifyContent: "center",
                       fontFamily: fonts.heading,
-                      fontSize: "1.6rem",
+                      fontSize: isMobile ? "1.2rem" : "1.6rem",
                       fontWeight: 400,
                       color: artist.accentColor === colors.espresso ? colors.cream : colors.espresso,
+                      flexShrink: 0,
                     }}
                   >
                     {artist.initial}
                   </div>
 
-                  <div style={{ textAlign: "center" }}>
+                  <div style={{ textAlign: isMobile ? "left" : "center" }}>
                     <p
                       style={{
                         fontSize: "0.65rem",
@@ -176,7 +183,7 @@ export default function ArtistsPage() {
                         textTransform: "uppercase",
                         fontWeight: 700,
                         color: artist.accentColor === colors.espresso ? colors.gold : colors.espresso,
-                        marginBottom: "4px",
+                        marginBottom: "2px",
                       }}
                     >
                       {artist.experience}
@@ -185,40 +192,40 @@ export default function ArtistsPage() {
                       style={{
                         fontSize: "0.7rem",
                         color: artist.accentColor === colors.espresso ? colors.sand : "rgba(45,36,36,0.7)",
-                        textAlign: "center",
                         lineHeight: 1.4,
+                        margin: "0 0 8px",
                       }}
                     >
                       Experience
                     </p>
+                    {artist.mobile && (
+                      <div
+                        style={{
+                          backgroundColor: "rgba(255,255,255,0.2)",
+                          padding: "3px 8px",
+                          fontSize: "0.6rem",
+                          fontWeight: 700,
+                          letterSpacing: "0.1em",
+                          textTransform: "uppercase",
+                          color: artist.accentColor === colors.espresso ? colors.cream : colors.espresso,
+                          display: "inline-block",
+                        }}
+                      >
+                        🚗 Mobile
+                      </div>
+                    )}
                   </div>
-
-                  {artist.mobile && (
-                    <div
-                      style={{
-                        backgroundColor: "rgba(255,255,255,0.2)",
-                        padding: "4px 10px",
-                        fontSize: "0.62rem",
-                        fontWeight: 700,
-                        letterSpacing: "0.1em",
-                        textTransform: "uppercase",
-                        color: artist.accentColor === colors.espresso ? colors.cream : colors.espresso,
-                      }}
-                    >
-                      🚗 Mobile
-                    </div>
-                  )}
                 </div>
 
-                {/* Right — Info Panel */}
-                <div style={{ padding: "32px 32px" }}>
+                {/* Info Panel */}
+                <div style={{ padding: "28px 28px", flex: 1 }}>
                   <p style={{ fontSize: "0.7rem", letterSpacing: "0.2em", textTransform: "uppercase", color: colors.gold, fontWeight: 600, marginBottom: "6px" }}>
                     {artist.role}
                   </p>
                   <h2
                     style={{
                       fontFamily: fonts.heading,
-                      fontSize: "2rem",
+                      fontSize: isMobile ? "1.6rem" : "2rem",
                       fontWeight: 400,
                       margin: "0 0 4px",
                       color: colors.espresso,
@@ -226,24 +233,23 @@ export default function ArtistsPage() {
                   >
                     {artist.name}
                   </h2>
-                  <p style={{ fontSize: "0.8rem", color: colors.gold, fontStyle: "italic", marginBottom: "16px" }}>
+                  <p style={{ fontSize: "0.8rem", color: colors.gold, fontStyle: "italic", marginBottom: "14px" }}>
                     Specialises in {artist.specialty}
                   </p>
-                  <p style={{ fontSize: "0.9rem", lineHeight: 1.75, opacity: 0.75, marginBottom: "20px" }}>
+                  <p style={{ fontSize: "0.88rem", lineHeight: 1.75, opacity: 0.75, marginBottom: "18px" }}>
                     {artist.bio}
                   </p>
 
-                  {/* Skills */}
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "24px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "20px" }}>
                     {artist.skills.map((skill, i) => (
                       <span
                         key={i}
                         style={{
-                          fontSize: "0.7rem",
+                          fontSize: "0.68rem",
                           fontWeight: 600,
                           letterSpacing: "0.08em",
                           textTransform: "uppercase",
-                          padding: "4px 12px",
+                          padding: "4px 10px",
                           border: `1px solid ${colors.sand}`,
                           color: colors.espresso,
                           opacity: 0.75,
@@ -254,7 +260,6 @@ export default function ArtistsPage() {
                     ))}
                   </div>
 
-                  {/* Book CTA */}
                   <Link
                     href={`/booking?artist=${encodeURIComponent(artist.name)}`}
                     onMouseEnter={() => setHoveredBtn(`book-${artist.id}`)}
@@ -263,7 +268,7 @@ export default function ArtistsPage() {
                       display: "inline-block",
                       backgroundColor: hoveredBtn === `book-${artist.id}` ? colors.espresso : colors.gold,
                       color: hoveredBtn === `book-${artist.id}` ? colors.cream : colors.espresso,
-                      padding: "11px 28px",
+                      padding: "11px 24px",
                       fontFamily: fonts.body,
                       fontSize: "0.75rem",
                       fontWeight: 700,
