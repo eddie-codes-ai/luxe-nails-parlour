@@ -2,15 +2,16 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 40);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 40);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -21,6 +22,11 @@ export default function Navbar() {
     { label: "Our Artists", href: "/artists" },
     { label: "Contact", href: "/contact" },
   ];
+
+  const fonts = {
+    heading: "'Cormorant Garamond', Georgia, serif",
+    body: "'Jost', 'Helvetica Neue', sans-serif",
+  };
 
   return (
     <header
@@ -49,40 +55,49 @@ export default function Navbar() {
       >
         {/* Logo */}
         <Link href="/" style={{ textDecoration: "none", lineHeight: 1 }}>
-          <div style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#2D2424", letterSpacing: "0.05em" }}>
+          <div style={{ fontFamily: fonts.heading, fontSize: "24px", color: "#2D2424", letterSpacing: "0.05em" }}>
             Luxe Nails
           </div>
-          <div style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.3em", color: "#C5A358", textTransform: "uppercase" }}>
+          <div style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.3em", color: "#C5A358", textTransform: "uppercase" }}>
             Parlour
           </div>
         </Link>
 
         {/* Desktop Nav Links */}
         <ul style={{ display: "flex", alignItems: "center", gap: "40px", listStyle: "none", margin: 0, padding: 0 }}>
-          {navLinks.map((link) => (
-            <li key={link.href} style={{ display: "none" }} className="desktop-nav-item">
-              <Link
-                href={link.href}
-                style={{
-                  fontFamily: "var(--font-body), sans-serif",
-                  fontSize: "12px",
-                  letterSpacing: "0.15em",
-                  textTransform: "uppercase",
-                  color: "#2D2424",
-                  textDecoration: "none",
-                }}
-              >
-                {link.label}
-              </Link>
-            </li>
-          ))}
+          {navLinks.map((link) => {
+            const isActive = pathname === link.href;
+            const isHovered = hoveredLink === link.href;
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  onMouseEnter={() => setHoveredLink(link.href)}
+                  onMouseLeave={() => setHoveredLink(null)}
+                  style={{
+                    fontFamily: fonts.body,
+                    fontSize: "12px",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    color: isActive ? "#C5A358" : isHovered ? "#C5A358" : "#2D2424",
+                    textDecoration: "none",
+                    borderBottom: isActive ? "1px solid #C5A358" : "1px solid transparent",
+                    paddingBottom: "2px",
+                    transition: "all 0.2s ease",
+                  }}
+                >
+                  {link.label}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
 
         {/* Book Now Button */}
         <Link
           href="/booking"
           style={{
-            fontFamily: "var(--font-body), sans-serif",
+            fontFamily: fonts.body,
             fontSize: "11px",
             letterSpacing: "0.2em",
             textTransform: "uppercase",
@@ -96,15 +111,6 @@ export default function Navbar() {
           Book Now
         </Link>
       </nav>
-
-      {/* Simple inline styles for desktop */}
-      <style>{`
-        @media (min-width: 768px) {
-          .desktop-nav-item {
-            display: list-item !important;
-          }
-        }
-      `}</style>
     </header>
   );
 }
