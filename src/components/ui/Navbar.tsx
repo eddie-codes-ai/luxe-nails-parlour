@@ -33,6 +33,7 @@ export default function Navbar() {
     { label: "Gallery", href: "/gallery" },
     { label: "Our Artists", href: "/artists" },
     { label: "Contact", href: "/contact" },
+    { label: "Shop", href: "/shop" },
   ];
 
   const fonts = {
