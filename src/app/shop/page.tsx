@@ -1,0 +1,521 @@
+"use client";
+
+import { useState } from "react";
+
+const fonts = {
+  heading: "'Cormorant Garamond', Georgia, serif",
+  body: "'Jost', sans-serif",
+};
+
+const colors = {
+  cream: "#FDFBF7",
+  espresso: "#2D2424",
+  gold: "#C5A358",
+  sand: "#E5E0D8",
+};
+
+const WHATSAPP_NUMBER = "254758550286";
+
+const products = [
+  { id: 1, category: "Oils", name: "Cuticle Repair Oil", price: 450, description: "Nourishing blend to soften and restore cuticles", emoji: "🧴" },
+  { id: 2, category: "Oils", name: "Nail Growth Oil", price: 550, description: "Strengthens and promotes healthy nail growth", emoji: "💧" },
+  { id: 3, category: "Oils", name: "Luxury Rose Cuticle Oil", price: 650, description: "Premium rose-infused cuticle treatment", emoji: "🌹" },
+  { id: 4, category: "Gels", name: "Clear Base Gel", price: 800, description: "High-shine base coat for long-lasting manicures", emoji: "✨" },
+  { id: 5, category: "Gels", name: "UV Top Coat Gel", price: 750, description: "Protective top coat for chip-free finish", emoji: "💅" },
+  { id: 6, category: "Gels", name: "Colour Gel Set (3pcs)", price: 1200, description: "Set of 3 trending gel colours", emoji: "🎨" },
+  { id: 7, category: "Jewellery", name: "Nail Charm Pack", price: 350, description: "Assorted charms for nail art designs", emoji: "💎" },
+  { id: 8, category: "Jewellery", name: "Crystal Rhinestone Set", price: 500, description: "Sparkling crystals for glam nail art", emoji: "🔮" },
+  { id: 9, category: "Jewellery", name: "Gold Foil Flakes", price: 300, description: "Real gold foil for luxe nail designs", emoji: "✨" },
+  { id: 10, category: "Tools", name: "Cuticle Pusher", price: 250, description: "Stainless steel cuticle tool", emoji: "🔧" },
+  { id: 11, category: "Tools", name: "Nail File Set (5pcs)", price: 400, description: "Professional grit nail files", emoji: "📋" },
+  { id: 12, category: "Tools", name: "Nail Buffer Block", price: 200, description: "4-way buffer for natural shine", emoji: "🟫" },
+];
+
+const categories = ["All", "Oils", "Gels", "Jewellery", "Tools"];
+
+type Product = typeof products[0];
+type CartItem = Product & { quantity: number };
+
+export default function ShopPage() {
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"mpesa" | "cash">("mpesa");
+  const [form, setForm] = useState({ name: "", phone: "" });
+  const [toast, setToast] = useState<string | null>(null);
+
+  const filtered = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
+  const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+  const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+
+  const addToCart = (product: Product) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.id === product.id);
+      if (existing) return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      return [...prev, { ...product, quantity: 1 }];
+    });
+    setToast(`${product.emoji} ${product.name} added to cart`);
+    setTimeout(() => setToast(null), 2500);
+  };
+
+  const updateQty = (id: number, delta: number) => {
+    setCart(prev =>
+      prev.map(i => i.id === id ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i)
+        .filter(i => i.quantity > 0)
+    );
+  };
+
+  const removeItem = (id: number) => {
+    setCart(prev => prev.filter(i => i.id !== id));
+  };
+
+  const sendToWhatsApp = () => {
+    if (!form.name.trim() || !form.phone.trim()) {
+      alert("Please enter your name and phone number before sending.");
+      return;
+    }
+
+    const itemLines = cart.map(i => `  • ${i.emoji} ${i.name} × ${i.quantity} — KSh ${(i.price * i.quantity).toLocaleString()}`).join("\n");
+    const paymentNote = paymentMethod === "mpesa"
+      ? "💳 Payment: M-Pesa (please send till number)"
+      : "💵 Payment: Cash on delivery/pickup";
+
+    const message =
+      `Hi LuxeNails! 💅 I'd like to place an order:\n\n` +
+      `${itemLines}\n\n` +
+      `*Total: KSh ${total.toLocaleString()}*\n\n` +
+      `${paymentNote}\n` +
+      `👤 Name: ${form.name}\n` +
+      `📞 Phone: ${form.phone}`;
+
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(url, "_blank");
+    setCheckoutOpen(false);
+    setCartOpen(false);
+    setCart([]);
+    setForm({ name: "", phone: "" });
+  };
+
+  return (
+    <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: ${colors.cream}; }
+        .product-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+        .product-card:hover { transform: translateY(-4px); box-shadow: 0 12px 40px rgba(45,36,36,0.12); }
+        .add-btn { transition: background 0.2s ease; }
+        .add-btn:hover { background: ${colors.espresso} !important; color: ${colors.cream} !important; }
+        .cat-btn { transition: all 0.2s ease; }
+        .cat-btn:hover { border-color: ${colors.gold} !important; color: ${colors.gold} !important; }
+        .cart-panel { animation: slideIn 0.3s ease; }
+        @keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+        .overlay { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+        .remove-btn { transition: color 0.2s; }
+        .remove-btn:hover { color: #c0392b !important; }
+        .toast { animation: toastIn 0.3s ease; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        .wa-btn { transition: background 0.2s ease, transform 0.1s ease; }
+        .wa-btn:hover { background: #1ebc59 !important; transform: scale(1.01); }
+        input:focus { border-color: ${colors.gold} !important; outline: none; }
+        @media (max-width: 600px) {
+          .product-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; padding: 24px 16px 60px !important; }
+          .page-hero { padding: 48px 20px 40px !important; }
+          .cat-bar { padding: 24px 16px 0 !important; }
+          .nav-links { display: none !important; }
+          .cart-panel { width: 100vw !important; }
+        }
+      `}</style>
+
+      {/* ── NAVBAR ── */}
+      <nav style={{
+        position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
+        background: colors.espresso, height: 70,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 40px",
+      }}>
+        <a href="/" style={{ fontFamily: fonts.heading, fontSize: "22px", color: colors.gold, textDecoration: "none", letterSpacing: "0.05em" }}>
+          LuxeNails
+        </a>
+        <div className="nav-links" style={{ display: "flex", gap: "28px", alignItems: "center" }}>
+          {["Home", "Services", "Gallery", "Booking", "Contact"].map(link => (
+            <a key={link} href={`/${link.toLowerCase()}`} style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(253,251,247,0.7)", textDecoration: "none", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {link}
+            </a>
+          ))}
+          <a href="/shop" style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.gold, textDecoration: "none", letterSpacing: "0.08em", textTransform: "uppercase", borderBottom: `1px solid ${colors.gold}`, paddingBottom: "2px" }}>
+            Shop
+          </a>
+        </div>
+
+        {/* Cart Button */}
+        <button onClick={() => setCartOpen(true)} style={{
+          background: "none", border: `1px solid ${colors.gold}`, borderRadius: "4px",
+          padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
+          fontFamily: fonts.body, fontSize: "13px", color: colors.gold,
+        }}>
+          🛍️ Cart
+          {itemCount > 0 && (
+            <span style={{
+              background: colors.gold, color: colors.espresso, borderRadius: "50%",
+              width: "20px", height: "20px", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "11px", fontWeight: 700,
+            }}>{itemCount}</span>
+          )}
+        </button>
+      </nav>
+
+      {/* ── MAIN ── */}
+      <main style={{ paddingTop: 70, minHeight: "100vh", background: colors.cream }}>
+
+        {/* Hero */}
+        <div className="page-hero" style={{ background: colors.espresso, padding: "60px 40px 50px", textAlign: "center" }}>
+          <p style={{ fontFamily: fonts.body, fontSize: "11px", letterSpacing: "0.25em", color: colors.gold, textTransform: "uppercase", marginBottom: "12px" }}>
+            Nail Care Products
+          </p>
+          <h1 style={{ fontFamily: fonts.heading, fontSize: "clamp(36px, 5vw, 60px)", color: colors.cream, fontWeight: 300, marginBottom: "16px" }}>
+            Shop Our Collection
+          </h1>
+          <p style={{ fontFamily: fonts.body, fontSize: "15px", color: "rgba(253,251,247,0.55)", maxWidth: "440px", margin: "0 auto", lineHeight: 1.8 }}>
+            Add your favourites to the cart, then send your full order straight to our WhatsApp — fast and easy.
+          </p>
+        </div>
+
+        {/* Info Banner */}
+        <div style={{
+          background: "#E8F5E9", borderBottom: "1px solid #C8E6C9",
+          padding: "13px 40px", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+        }}>
+          <span style={{ fontSize: "18px" }}>💬</span>
+          <p style={{ fontFamily: fonts.body, fontSize: "13px", color: "#2E7D32" }}>
+            Add items to your cart, then send your full order to us on <strong>WhatsApp</strong> — no account needed.
+          </p>
+        </div>
+
+        {/* Category Filter */}
+        <div className="cat-bar" style={{ padding: "32px 40px 0", display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
+          {categories.map(cat => (
+            <button key={cat} className="cat-btn" onClick={() => setActiveCategory(cat)} style={{
+              fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
+              padding: "10px 22px", borderRadius: "2px", cursor: "pointer",
+              background: activeCategory === cat ? colors.gold : "transparent",
+              color: colors.espresso,
+              border: `1px solid ${activeCategory === cat ? colors.gold : colors.sand}`,
+              fontWeight: activeCategory === cat ? 600 : 400,
+            }}>
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        {/* Product Grid */}
+        <div className="product-grid" style={{
+          display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: "24px", padding: "32px 40px 80px", maxWidth: "1200px", margin: "0 auto",
+        }}>
+          {filtered.map(product => {
+            const inCart = cart.find(i => i.id === product.id);
+            return (
+              <div key={product.id} className="product-card" style={{
+                background: "#fff", borderRadius: "4px", overflow: "hidden",
+                border: `1px solid ${inCart ? colors.gold : colors.sand}`,
+                position: "relative",
+              }}>
+                {inCart && (
+                  <div style={{
+                    position: "absolute", top: "12px", right: "12px",
+                    background: colors.gold, color: colors.espresso,
+                    borderRadius: "50%", width: "26px", height: "26px",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "12px", fontWeight: 700, fontFamily: fonts.body,
+                    zIndex: 2,
+                  }}>
+                    {inCart.quantity}
+                  </div>
+                )}
+
+                {/* Image */}
+                <div style={{
+                  height: "190px", background: colors.sand,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px",
+                }}>
+                  <span style={{ fontSize: "50px" }}>{product.emoji}</span>
+                  <span style={{ fontFamily: fonts.body, fontSize: "10px", color: "rgba(45,36,36,0.35)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                    Photo coming soon
+                  </span>
+                </div>
+
+                {/* Info */}
+                <div style={{ padding: "18px 20px 20px" }}>
+                  <span style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: colors.gold, fontWeight: 500 }}>
+                    {product.category}
+                  </span>
+                  <h3 style={{ fontFamily: fonts.heading, fontSize: "21px", color: colors.espresso, fontWeight: 500, margin: "5px 0 7px", lineHeight: 1.2 }}>
+                    {product.name}
+                  </h3>
+                  <p style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(45,36,36,0.55)", lineHeight: 1.7, marginBottom: "16px" }}>
+                    {product.description}
+                  </p>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                    <span style={{ fontFamily: fonts.heading, fontSize: "22px", color: colors.espresso, fontWeight: 500 }}>
+                      KSh {product.price.toLocaleString()}
+                    </span>
+
+                    {inCart ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        <button onClick={() => updateQty(product.id, -1)} style={{
+                          width: "30px", height: "30px", background: colors.sand, border: "none",
+                          borderRadius: "2px", cursor: "pointer", fontSize: "16px",
+                          display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fonts.body,
+                        }}>−</button>
+                        <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600, minWidth: "20px", textAlign: "center" }}>{inCart.quantity}</span>
+                        <button onClick={() => updateQty(product.id, 1)} style={{
+                          width: "30px", height: "30px", background: colors.gold, border: "none",
+                          borderRadius: "2px", cursor: "pointer", fontSize: "16px",
+                          display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fonts.body,
+                        }}>+</button>
+                      </div>
+                    ) : (
+                      <button className="add-btn" onClick={() => addToCart(product)} style={{
+                        background: colors.gold, color: colors.espresso, border: "none",
+                        padding: "10px 18px", borderRadius: "2px", cursor: "pointer",
+                        fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.08em",
+                        textTransform: "uppercase", fontWeight: 600,
+                      }}>
+                        + Add
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </main>
+
+      {/* ── CART OVERLAY ── */}
+      {cartOpen && (
+        <div className="overlay" onClick={() => setCartOpen(false)} style={{
+          position: "fixed", inset: 0, background: "rgba(45,36,36,0.5)", zIndex: 200,
+        }} />
+      )}
+
+      {/* ── CART PANEL ── */}
+      {cartOpen && (
+        <div className="cart-panel" style={{
+          position: "fixed", top: 0, right: 0, bottom: 0, width: "min(420px, 100vw)",
+          background: colors.cream, zIndex: 201,
+          display: "flex", flexDirection: "column",
+          boxShadow: "-8px 0 40px rgba(45,36,36,0.15)",
+        }}>
+          {/* Header */}
+          <div style={{ padding: "24px", borderBottom: `1px solid ${colors.sand}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.espresso, fontWeight: 400 }}>
+              Your Cart {itemCount > 0 && <span style={{ fontSize: "16px", color: colors.gold }}>({itemCount} items)</span>}
+            </h2>
+            <button onClick={() => setCartOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: colors.espresso }}>✕</button>
+          </div>
+
+          {/* Items */}
+          <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+            {cart.length === 0 ? (
+              <div style={{ textAlign: "center", paddingTop: "60px" }}>
+                <div style={{ fontSize: "48px", marginBottom: "16px" }}>🛍️</div>
+                <p style={{ fontFamily: fonts.body, color: "rgba(45,36,36,0.45)", fontSize: "15px" }}>Your cart is empty</p>
+                <button onClick={() => setCartOpen(false)} style={{
+                  marginTop: "20px", background: "none", border: `1px solid ${colors.gold}`,
+                  borderRadius: "2px", padding: "10px 24px", cursor: "pointer",
+                  fontFamily: fonts.body, fontSize: "12px", color: colors.gold,
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                }}>
+                  Browse Products
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                {cart.map(item => (
+                  <div key={item.id} style={{
+                    display: "flex", gap: "14px", padding: "14px",
+                    background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`,
+                    alignItems: "center",
+                  }}>
+                    <div style={{
+                      width: "54px", height: "54px", background: colors.sand, borderRadius: "4px",
+                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0,
+                    }}>
+                      {item.emoji}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontFamily: fonts.heading, fontSize: "17px", color: colors.espresso, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {item.name}
+                      </p>
+                      <p style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.gold, marginTop: "2px" }}>
+                        KSh {item.price.toLocaleString()} each
+                      </p>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+                        <button onClick={() => updateQty(item.id, -1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>−</button>
+                        <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600 }}>{item.quantity}</span>
+                        <button onClick={() => updateQty(item.id, 1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>+</button>
+                        <button className="remove-btn" onClick={() => removeItem(item.id)} style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          fontFamily: fonts.body, fontSize: "12px", color: "rgba(45,36,36,0.35)",
+                          letterSpacing: "0.05em", marginLeft: "4px",
+                        }}>
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontFamily: fonts.heading, fontSize: "18px", color: colors.espresso, fontWeight: 500, flexShrink: 0 }}>
+                      KSh {(item.price * item.quantity).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          {cart.length > 0 && (
+            <div style={{ padding: "20px 24px", borderTop: `1px solid ${colors.sand}` }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <span style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(45,36,36,0.55)", letterSpacing: "0.08em", textTransform: "uppercase" }}>Total</span>
+                <span style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.espresso, fontWeight: 500 }}>KSh {total.toLocaleString()}</span>
+              </div>
+              <button onClick={() => { setCartOpen(false); setCheckoutOpen(true); }} style={{
+                width: "100%", padding: "15px", background: "#25D366", border: "none",
+                borderRadius: "2px", cursor: "pointer", fontFamily: fonts.body,
+                fontSize: "13px", letterSpacing: "0.12em", textTransform: "uppercase",
+                fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+              }}>
+                💬 Send Order via WhatsApp
+              </button>
+              <button onClick={() => setCartOpen(false)} style={{
+                width: "100%", padding: "12px", background: "transparent",
+                border: `1px solid ${colors.sand}`, borderRadius: "2px", cursor: "pointer",
+                fontFamily: fonts.body, fontSize: "12px", color: colors.espresso,
+                letterSpacing: "0.08em", textTransform: "uppercase", marginTop: "10px",
+              }}>
+                Continue Shopping
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── CHECKOUT MODAL ── */}
+      {checkoutOpen && (
+        <>
+          <div className="overlay" onClick={() => setCheckoutOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(45,36,36,0.6)", zIndex: 300 }} />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            background: colors.cream, borderRadius: "4px", zIndex: 301,
+            width: "min(520px, 95vw)", maxHeight: "90vh", overflowY: "auto",
+            boxShadow: "0 24px 80px rgba(45,36,36,0.2)",
+          }}>
+            <div style={{ padding: "32px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                <h2 style={{ fontFamily: fonts.heading, fontSize: "30px", color: colors.espresso, fontWeight: 400 }}>Almost done!</h2>
+                <button onClick={() => setCheckoutOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: colors.espresso }}>✕</button>
+              </div>
+
+              {/* Order Summary */}
+              <div style={{ background: "#fff", border: `1px solid ${colors.sand}`, borderRadius: "4px", padding: "18px", marginBottom: "24px" }}>
+                <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "12px" }}>Order Summary</p>
+                {cart.map(item => (
+                  <div key={item.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
+                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso }}>
+                      {item.emoji} {item.name} × {item.quantity}
+                    </span>
+                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso, fontWeight: 500 }}>
+                      KSh {(item.price * item.quantity).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div style={{ borderTop: `1px solid ${colors.sand}`, paddingTop: "12px", marginTop: "10px", display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontFamily: fonts.body, fontSize: "13px", fontWeight: 600 }}>Total</span>
+                  <span style={{ fontFamily: fonts.heading, fontSize: "22px", color: colors.espresso, fontWeight: 500 }}>KSh {total.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Details */}
+              <div style={{ marginBottom: "22px" }}>
+                <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "14px" }}>Your Details</p>
+                {[
+                  { label: "Full Name", key: "name", placeholder: "e.g. Jane Doe", type: "text" },
+                  { label: "Phone Number", key: "phone", placeholder: "e.g. 0712 345 678", type: "tel" },
+                ].map(field => (
+                  <div key={field.key} style={{ marginBottom: "14px" }}>
+                    <label style={{ fontFamily: fonts.body, fontSize: "12px", color: colors.espresso, display: "block", marginBottom: "6px", letterSpacing: "0.03em" }}>{field.label}</label>
+                    <input
+                      type={field.type}
+                      placeholder={field.placeholder}
+                      value={form[field.key as keyof typeof form]}
+                      onChange={e => setForm(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      style={{
+                        width: "100%", padding: "11px 14px",
+                        border: `1px solid ${colors.sand}`, borderRadius: "2px",
+                        fontFamily: fonts.body, fontSize: "14px", color: colors.espresso, background: "#fff",
+                        transition: "border-color 0.2s",
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Payment */}
+              <div style={{ marginBottom: "28px" }}>
+                <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "14px" }}>Payment Method</p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  {[
+                    { id: "mpesa", label: "M-Pesa", icon: "📱", desc: "We'll send you the till number" },
+                    { id: "cash", label: "Cash", icon: "💵", desc: "Pay on delivery or pickup" },
+                  ].map(method => (
+                    <button key={method.id} onClick={() => setPaymentMethod(method.id as "mpesa" | "cash")} style={{
+                      padding: "14px", textAlign: "left", cursor: "pointer",
+                      border: `2px solid ${paymentMethod === method.id ? colors.gold : colors.sand}`,
+                      borderRadius: "4px",
+                      background: paymentMethod === method.id ? "rgba(197,163,88,0.07)" : "#fff",
+                    }}>
+                      <div style={{ fontSize: "22px", marginBottom: "5px" }}>{method.icon}</div>
+                      <p style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600, color: colors.espresso }}>{method.label}</p>
+                      <p style={{ fontFamily: fonts.body, fontSize: "11px", color: "rgba(45,36,36,0.5)", marginTop: "2px" }}>{method.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Send Button */}
+              <button className="wa-btn" onClick={sendToWhatsApp} style={{
+                width: "100%", padding: "16px", background: "#25D366", border: "none",
+                borderRadius: "2px", cursor: "pointer", fontFamily: fonts.body,
+                fontSize: "13px", letterSpacing: "0.12em", textTransform: "uppercase",
+                fontWeight: 600, color: "#fff",
+                display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+              }}>
+                💬 Send Order on WhatsApp — KSh {total.toLocaleString()}
+              </button>
+              <p style={{ fontFamily: fonts.body, fontSize: "12px", color: "rgba(45,36,36,0.4)", textAlign: "center", marginTop: "12px", lineHeight: 1.6 }}>
+                This will open WhatsApp with your full order ready to send to us.
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+      {/* ── TOAST NOTIFICATION ── */}
+      {toast && (
+        <div className="toast" style={{
+          position: "fixed", bottom: "32px", left: "50%", transform: "translateX(-50%)",
+          background: colors.espresso, color: colors.cream, borderRadius: "4px",
+          padding: "12px 24px", zIndex: 500, fontFamily: fonts.body, fontSize: "13px",
+          letterSpacing: "0.04em", boxShadow: "0 8px 32px rgba(45,36,36,0.25)",
+          display: "flex", alignItems: "center", gap: "10px", whiteSpace: "nowrap",
+        }}>
+          {toast}
+          <span style={{ color: colors.gold, fontWeight: 700 }}>✓</span>
+        </div>
+      )}
+    </>
+  );
+}
