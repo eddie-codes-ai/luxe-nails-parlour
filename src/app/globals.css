@@ -1,14 +1,16 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── BASE STYLES ─────────────────────────────── */
+:root {
+  --font-heading: 'Cormorant Garamond', serif;
+  --font-body: 'Jost', sans-serif;
+}
+
 * {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 html {
@@ -16,13 +18,28 @@ html {
 }
 
 body {
+  font-family: var(--font-body);
   background-color: #FDFBF7;
   color: #2D2424;
-  font-family: "Jost", sans-serif;
-  font-weight: 300;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4 {
-  font-family: "Cormorant Garamond", serif;
-  font-weight: 400;
+/* Text selection colour — gold highlight */
+::selection {
+  background-color: #C5A358;
+  color: #FDFBF7;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FDFBF7;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C5A358;
 }
