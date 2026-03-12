@@ -36,7 +36,7 @@ const reasons = [
 ];
 
 export default function WhyUs() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const [isTablet, setIsTablet] = useState(false);
 
   useEffect(() => {

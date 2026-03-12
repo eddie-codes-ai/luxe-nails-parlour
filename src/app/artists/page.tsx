@@ -81,7 +81,7 @@ const colors = {
 export default function ArtistsPage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [hoveredBtn, setHoveredBtn] = useState<string | null>(null);
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);

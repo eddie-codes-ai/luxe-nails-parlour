@@ -47,7 +47,7 @@ const artistsData = [
 ];
 
 export default function ArtistSpotlight() {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
   const featured = artistsData.slice(0, 3);
 
   useEffect(() => {

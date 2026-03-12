@@ -61,7 +61,7 @@ const servicesData = [
 ];
 
 export default function ServicesPreview() {
-  const [isMobile, setIsMobile] = useState(false);
+ const [isMobile, setIsMobile] = useState(true);
   const featured = servicesData.slice(0, 3);
 
   useEffect(() => {
