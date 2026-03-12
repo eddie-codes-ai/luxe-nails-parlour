@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 const servicesData = [
   {
@@ -60,17 +61,32 @@ const servicesData = [
 ];
 
 export default function ServicesPreview() {
+  const [isMobile, setIsMobile] = useState(false);
   const featured = servicesData.slice(0, 3);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   return (
-    <section style={{ backgroundColor: "#FDFBF7", padding: "112px 48px" }}>
+    <section style={{ backgroundColor: "#FDFBF7", padding: isMobile ? "80px 24px" : "112px 48px" }}>
       <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
 
         {/* Section Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "64px", flexWrap: "wrap", gap: "32px" }}>
+        <div style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "space-between",
+          alignItems: isMobile ? "flex-start" : "flex-end",
+          marginBottom: "64px",
+          gap: "32px",
+        }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
-              <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358" }} />
+              <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358", flexShrink: 0 }} />
               <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.4em", textTransform: "uppercase", color: "#C5A358" }}>
                 What We Offer
               </span>
@@ -85,35 +101,38 @@ export default function ServicesPreview() {
         </div>
 
         {/* Service Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", border: "1px solid #E5E0D8" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          border: "1px solid #E5E0D8",
+        }}>
           {featured.map((service, index) => (
             <div
               key={service.id}
               style={{
                 position: "relative",
-                padding: "40px",
-                borderRight: index < 2 ? "1px solid #E5E0D8" : "none",
+                padding: isMobile ? "32px 24px" : "40px",
+                borderRight: !isMobile && index < 2 ? "1px solid #E5E0D8" : "none",
+                borderBottom: isMobile && index < 2 ? "1px solid #E5E0D8" : "none",
                 transition: "background-color 0.4s ease",
                 cursor: "pointer",
               }}
               onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#2D2424")}
               onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
             >
-              {/* Big number */}
               <span style={{
                 fontFamily: "var(--font-heading), serif",
                 fontSize: "64px",
                 color: "#E5E0D8",
                 position: "absolute",
                 top: "32px",
-                right: "32px",
+                right: "24px",
                 lineHeight: 1,
                 userSelect: "none",
               }}>
                 {String(index + 1).padStart(2, "0")}
               </span>
 
-              {/* Category */}
               <span style={{
                 display: "inline-block",
                 fontFamily: "var(--font-body), sans-serif",
@@ -128,25 +147,20 @@ export default function ServicesPreview() {
                 {service.category}
               </span>
 
-              {/* Name */}
-              <h3 style={{ fontFamily: "var(--font-heading), serif", fontSize: "28px", color: "#2D2424", marginBottom: "12px" }}
-                className="card-title">
+              <h3 style={{ fontFamily: "var(--font-heading), serif", fontSize: "28px", color: "#2D2424", marginBottom: "12px" }}>
                 {service.name}
               </h3>
 
-              {/* Tagline */}
-              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "14px", color: "rgba(45,36,36,0.55)", lineHeight: 1.6, marginBottom: "32px" }}
-                className="card-tagline">
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "14px", color: "rgba(45,36,36,0.55)", lineHeight: 1.6, marginBottom: "32px" }}>
                 {service.tagline}
               </p>
 
-              {/* Price row */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
                 <div>
                   <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase", color: "#C5A358", marginBottom: "4px" }}>
                     From
                   </p>
-                  <p style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#2D2424" }} className="card-price">
+                  <p style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#2D2424" }}>
                     KES {service.basePrice.toLocaleString()}
                   </p>
                 </div>
@@ -155,7 +169,6 @@ export default function ServicesPreview() {
                 </span>
               </div>
 
-              {/* Mobile badge */}
               {service.available_mobile && (
                 <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "24px" }}>
                   <div style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "#C5A358" }} />
@@ -187,13 +200,6 @@ export default function ServicesPreview() {
         </div>
 
       </div>
-
-      {/* Hover styles */}
-      <style>{`
-        @media (max-width: 768px) {
-          #services-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
     </section>
   );
 }

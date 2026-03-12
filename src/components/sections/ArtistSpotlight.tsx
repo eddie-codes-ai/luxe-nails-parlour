@@ -1,11 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect } from "react";
 
 const artistsData = [
   {
     id: "amara",
     name: "Amara Osei",
     title: "Lead Nail Artist & Founder",
-    bio: "With over 8 years of experience, Amara is the creative force behind Luxe Nails Parlour. Specialising in intricate nail art and bridal packages, her work has been featured in Kenyan lifestyle magazines.",
+    bio: "With over 8 years of experience, Amara is the creative force behind Luxe Nails Parlour.",
     specialties: ["Bridal Nails", "Nail Art", "Acrylic Extensions"],
     available_mobile: true,
   },
@@ -13,7 +16,7 @@ const artistsData = [
     id: "zuri",
     name: "Zuri Kamau",
     title: "Gel & Enhancement Specialist",
-    bio: "Zuri's precision and attention to detail make her the go-to artist for long-lasting gel manicures and flawless acrylic sets. Clients keep coming back for her calm, professional touch.",
+    bio: "Zuri's precision and attention to detail make her the go-to artist for long-lasting gel manicures.",
     specialties: ["Gel Manicure", "Acrylic Tips", "Chrome Finishes"],
     available_mobile: false,
   },
@@ -21,7 +24,7 @@ const artistsData = [
     id: "fatima",
     name: "Fatima Hassan",
     title: "Nail Art & Design Expert",
-    bio: "Fatima turns nails into tiny masterpieces. From minimalist florals to bold geometric designs, her artistic background shines through every set she creates.",
+    bio: "Fatima turns nails into tiny masterpieces — from minimalist florals to bold geometric designs.",
     specialties: ["Custom Nail Art", "3D Embellishments", "Foil Effects"],
     available_mobile: true,
   },
@@ -29,7 +32,7 @@ const artistsData = [
     id: "njeri",
     name: "Njeri Mwangi",
     title: "Pedicure & Wellness Specialist",
-    bio: "Njeri believes self-care starts from the ground up. Her luxury pedicure treatments are deeply relaxing, with a therapeutic approach that leaves clients feeling completely renewed.",
+    bio: "Njeri believes self-care starts from the ground up.",
     specialties: ["Luxury Pedicure", "Hot Stone Massage", "Paraffin Treatments"],
     available_mobile: false,
   },
@@ -37,24 +40,39 @@ const artistsData = [
     id: "aisha",
     name: "Aisha Wanjiku",
     title: "Classic & Mobile Nail Technician",
-    bio: "Aisha is our mobile service champion — bringing the full Luxe Nails experience directly to your home or office. Warm, professional and always punctual.",
+    bio: "Aisha is our mobile service champion — bringing the full Luxe Nails experience to your home or office.",
     specialties: ["Classic Manicure", "Mobile Services", "Gel Polish"],
     available_mobile: true,
   },
 ];
 
 export default function ArtistSpotlight() {
+  const [isMobile, setIsMobile] = useState(false);
   const featured = artistsData.slice(0, 3);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   return (
-    <section style={{ backgroundColor: "#F5EFE6", padding: "112px 48px" }}>
+    <section style={{ backgroundColor: "#F5EFE6", padding: isMobile ? "80px 24px" : "112px 48px" }}>
       <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: "64px", flexWrap: "wrap", gap: "32px" }}>
+        <div style={{
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          justifyContent: "space-between",
+          alignItems: isMobile ? "flex-start" : "flex-end",
+          marginBottom: "64px",
+          gap: "32px",
+        }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
-              <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358" }} />
+              <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358", flexShrink: 0 }} />
               <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.4em", textTransform: "uppercase", color: "#C5A358" }}>
                 The Team
               </span>
@@ -69,7 +87,11 @@ export default function ArtistSpotlight() {
         </div>
 
         {/* Artist Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "32px" }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+          gap: "32px",
+        }}>
           {featured.map((artist) => (
             <div key={artist.id} style={{ position: "relative" }}>
 
@@ -78,16 +100,14 @@ export default function ArtistSpotlight() {
                 style={{
                   position: "relative",
                   backgroundColor: "#E5E0D8",
-                  aspectRatio: "3/4",
+                  aspectRatio: isMobile ? "4/3" : "3/4",
                   marginBottom: "24px",
                   overflow: "hidden",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
-                className="artist-card"
               >
-                {/* Initial placeholder */}
                 <div style={{
                   width: "80px",
                   height: "80px",
@@ -102,7 +122,6 @@ export default function ArtistSpotlight() {
                   </span>
                 </div>
 
-                {/* Mobile badge */}
                 {artist.available_mobile && (
                   <div style={{
                     position: "absolute",
@@ -118,17 +137,14 @@ export default function ArtistSpotlight() {
                 )}
               </div>
 
-              {/* Name */}
               <h3 style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#2D2424", marginBottom: "4px" }}>
                 {artist.name}
               </h3>
 
-              {/* Title */}
               <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#C5A358", marginBottom: "16px" }}>
                 {artist.title}
               </p>
 
-              {/* Specialty tags */}
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 {artist.specialties.slice(0, 2).map((specialty) => (
                   <span
@@ -147,7 +163,6 @@ export default function ArtistSpotlight() {
                   </span>
                 ))}
               </div>
-
             </div>
           ))}
         </div>

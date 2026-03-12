@@ -5,10 +5,18 @@ import { useEffect, useState } from "react";
 
 export default function HeroSection() {
   const [visible, setVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), 100);
     return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
   }, []);
 
   const fadeIn = {
@@ -60,14 +68,15 @@ export default function HeroSection() {
         zIndex: 10,
         maxWidth: "1280px",
         margin: "0 auto",
-        padding: "128px 48px 80px",
+        padding: isMobile ? "100px 24px 120px" : "128px 48px 80px",
         width: "100%",
+        boxSizing: "border-box",
       }}>
         <div style={{ maxWidth: "720px" }}>
 
           {/* Eyebrow */}
           <div style={{ ...fadeIn, transitionDelay: "100ms", display: "flex", alignItems: "center", gap: "16px", marginBottom: "32px" }}>
-            <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358" }} />
+            <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358", flexShrink: 0 }} />
             <span style={{
               fontFamily: "var(--font-body), sans-serif",
               fontSize: "11px",
@@ -84,7 +93,7 @@ export default function HeroSection() {
             ...fadeIn,
             transitionDelay: "200ms",
             fontFamily: "var(--font-heading), serif",
-            fontSize: "clamp(56px, 8vw, 96px)",
+            fontSize: isMobile ? "clamp(40px, 12vw, 64px)" : "clamp(56px, 8vw, 96px)",
             color: "#2D2424",
             lineHeight: 1,
             marginBottom: "24px",
@@ -99,7 +108,7 @@ export default function HeroSection() {
             ...fadeIn,
             transitionDelay: "350ms",
             fontFamily: "var(--font-body), sans-serif",
-            fontSize: "18px",
+            fontSize: isMobile ? "16px" : "18px",
             color: "rgba(45,36,36,0.6)",
             lineHeight: 1.7,
             maxWidth: "540px",
@@ -110,7 +119,14 @@ export default function HeroSection() {
           </p>
 
           {/* CTA Buttons */}
-          <div style={{ ...fadeIn, transitionDelay: "500ms", display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          <div style={{
+            ...fadeIn,
+            transitionDelay: "500ms",
+            display: "flex",
+            gap: "16px",
+            flexDirection: isMobile ? "column" : "row",
+            flexWrap: "wrap",
+          }}>
             <Link
               href="/services"
               style={{
@@ -124,6 +140,7 @@ export default function HeroSection() {
                 textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
                 gap: "12px",
               }}
             >
@@ -143,6 +160,7 @@ export default function HeroSection() {
                 textDecoration: "none",
                 display: "inline-flex",
                 alignItems: "center",
+                justifyContent: "center",
               }}
             >
               Book an Appointment
@@ -150,14 +168,14 @@ export default function HeroSection() {
           </div>
 
           {/* Stats */}
-          <div style={{ ...fadeIn, transitionDelay: "650ms", display: "flex", gap: "40px", marginTop: "64px", flexWrap: "wrap" }}>
+          <div style={{ ...fadeIn, transitionDelay: "650ms", display: "flex", gap: "32px", marginTop: "64px", flexWrap: "wrap" }}>
             {[
               { number: "8+", label: "Years of Excellence" },
               { number: "5", label: "Expert Artists" },
               { number: "2K+", label: "Happy Clients" },
             ].map((stat) => (
               <div key={stat.label} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontFamily: "var(--font-heading), serif", fontSize: "36px", color: "#C5A358" }}>
+                <span style={{ fontFamily: "var(--font-heading), serif", fontSize: isMobile ? "28px" : "36px", color: "#C5A358" }}>
                   {stat.number}
                 </span>
                 <span style={{
@@ -174,25 +192,44 @@ export default function HeroSection() {
               </div>
             ))}
           </div>
-        </div>
 
-        {/* Mobile badge */}
-        <div style={{
-          ...fadeIn,
-          transitionDelay: "750ms",
-          position: "absolute",
-          bottom: "48px",
-          right: "48px",
-          backgroundColor: "rgba(255,255,255,0.85)",
-          border: "1px solid #E5E0D8",
-          padding: "16px 24px",
-        }}>
-          <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", color: "#C5A358", marginBottom: "4px" }}>
-            Mobile Service Available
-          </p>
-          <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "14px", color: "#2D2424" }}>
-            We come to you — anywhere in Nairobi
-          </p>
+          {/* Mobile badge — inline on mobile, absolute on desktop */}
+          {isMobile ? (
+            <div style={{
+              ...fadeIn,
+              transitionDelay: "750ms",
+              marginTop: "40px",
+              backgroundColor: "rgba(255,255,255,0.85)",
+              border: "1px solid #E5E0D8",
+              padding: "16px 20px",
+              display: "inline-block",
+            }}>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", color: "#C5A358", marginBottom: "4px" }}>
+                Mobile Service Available
+              </p>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "13px", color: "#2D2424", margin: 0 }}>
+                We come to you — anywhere in Nairobi
+              </p>
+            </div>
+          ) : (
+            <div style={{
+              ...fadeIn,
+              transitionDelay: "750ms",
+              position: "absolute",
+              bottom: "48px",
+              right: "48px",
+              backgroundColor: "rgba(255,255,255,0.85)",
+              border: "1px solid #E5E0D8",
+              padding: "16px 24px",
+            }}>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", color: "#C5A358", marginBottom: "4px" }}>
+                Mobile Service Available
+              </p>
+              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "14px", color: "#2D2424", margin: 0 }}>
+                We come to you — anywhere in Nairobi
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </section>
