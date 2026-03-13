@@ -50,6 +50,7 @@ export default function AdminGallery() {
   const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [showNewGroupInput, setShowNewGroupInput] = useState(false);
 
   const fetchImages = async () => {
     setLoading(true);
@@ -67,6 +68,7 @@ export default function AdminGallery() {
     setPreviewUrl(image.image_url);
     setUploadMode(image.image_url.includes("supabase") ? "upload" : "url");
     setShowForm(true);
+    setShowNewGroupInput(false);
     setError("");
     setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -77,6 +79,7 @@ export default function AdminGallery() {
     setForm(emptyImage);
     setPreviewUrl("");
     setShowForm(true);
+    setShowNewGroupInput(false);
     setError("");
     setSuccess("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -87,6 +90,7 @@ export default function AdminGallery() {
     setEditingImage(null);
     setForm(emptyImage);
     setPreviewUrl("");
+    setShowNewGroupInput(false);
     setError("");
   };
 
@@ -130,6 +134,7 @@ export default function AdminGallery() {
       setEditingImage(null);
       setForm(emptyImage);
       setPreviewUrl("");
+      setShowNewGroupInput(false);
       fetchImages();
       setTimeout(() => setSuccess(""), 3000);
     } else {
@@ -167,7 +172,17 @@ export default function AdminGallery() {
     color: "rgba(45,36,36,0.5)", marginBottom: "6px", display: "block",
   };
 
-  // Get unique design groups for suggestions
+  const selectStyle = {
+    ...inputStyle,
+    appearance: "none" as const,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D2424' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat" as const,
+    backgroundPosition: "right 14px center" as const,
+    paddingRight: "36px",
+    cursor: "pointer",
+  };
+
+  // Get unique design groups from existing images
   const existingGroups = [...new Set(images.map(img => img.design_group).filter(Boolean))];
 
   return (
@@ -330,36 +345,84 @@ export default function AdminGallery() {
 
               <div>
                 <label style={labelStyle}>Category *</label>
-                <select
-                  style={{
-                    ...inputStyle, appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D2424' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center",
-                    paddingRight: "36px", cursor: "pointer",
-                  }}
-                  value={form.category}
-                  onChange={e => setForm({ ...form, category: e.target.value })}
-                >
+                <select style={selectStyle} value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                   <option value="">Select a category...</option>
                   {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
               </div>
 
+              {/* ── Design Group ── */}
               <div>
-                <label style={labelStyle}>Design Group <span style={{ color: "#C5A358" }}>(links photos together)</span></label>
-                <input
-                  style={inputStyle}
-                  value={form.design_group}
-                  onChange={e => setForm({ ...form, design_group: e.target.value })}
-                  placeholder="e.g. pink-ombre-set"
-                  list="design-groups"
-                />
-                <datalist id="design-groups">
-                  {existingGroups.map(g => <option key={g} value={g} />)}
-                </datalist>
-                <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "4px" }}>
-                  Photos with the same group name appear together in the lightbox
-                </p>
+                <label style={labelStyle}>
+                  Design Group <span style={{ color: "#C5A358" }}>(links photos together)</span>
+                </label>
+
+                {existingGroups.length > 0 && !showNewGroupInput ? (
+                  /* Show dropdown when groups exist */
+                  <select
+                    style={selectStyle}
+                    value={form.design_group ?? ""}
+                    onChange={e => {
+                      if (e.target.value === "__new__") {
+                        setShowNewGroupInput(true);
+                        setForm({ ...form, design_group: "" });
+                      } else {
+                        setForm({ ...form, design_group: e.target.value });
+                      }
+                    }}
+                  >
+                    <option value="">No group (standalone photo)</option>
+                    {existingGroups.map(g => (
+                      <option key={g} value={g}>🔗 {g}</option>
+                    ))}
+                    <option value="__new__">＋ Create new group...</option>
+                  </select>
+                ) : (
+                  /* Show text input for new group */
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <input
+                      style={{ ...inputStyle, flex: 1 }}
+                      value={form.design_group}
+                      onChange={e => setForm({ ...form, design_group: e.target.value })}
+                      placeholder="e.g. pink-ombre-set (no spaces)"
+                      autoFocus
+                    />
+                    {existingGroups.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowNewGroupInput(false);
+                          setForm({ ...form, design_group: "" });
+                        }}
+                        style={{
+                          background: "none", border: "1px solid #E5E0D8", borderRadius: "2px",
+                          padding: "8px 14px", cursor: "pointer", fontSize: "18px",
+                          color: "rgba(45,36,36,0.5)", lineHeight: 1,
+                        }}
+                        title="Back to dropdown"
+                      >
+                        ←
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Status line below the field */}
+                {form.design_group && !showNewGroupInput && (
+                  <p style={{ fontSize: "11px", color: "#C5A358", marginTop: "5px" }}>
+                    🔗 Linking to group: <strong>{form.design_group}</strong>
+                  </p>
+                )}
+                {showNewGroupInput && (
+                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                    Type a name then save — it will appear in the dropdown next time
+                  </p>
+                )}
+                {!form.design_group && !showNewGroupInput && (
+                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                    Photos in the same group appear together in the lightbox
+                  </p>
+                )}
               </div>
 
               <div>
@@ -436,13 +499,15 @@ export default function AdminGallery() {
                       ⭐ Featured
                     </div>
                   )}
+                  {image.design_group && (
+                    <div style={{ position: "absolute", bottom: "8px", left: "8px", background: "rgba(45,36,36,0.75)", color: "#C5A358", fontSize: "10px", padding: "2px 8px", borderRadius: "20px" }}>
+                      🔗 {image.design_group}
+                    </div>
+                  )}
                 </div>
                 <div style={{ padding: "12px 16px" }}>
                   <p style={{ fontSize: "13px", fontWeight: 600, color: "#2D2424", margin: "0 0 2px" }}>{image.title}</p>
-                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.5)", margin: "0 0 4px" }}>{image.category}</p>
-                  {image.design_group && (
-                    <p style={{ fontSize: "10px", color: "#C5A358", margin: "0 0 10px" }}>🔗 Group: {image.design_group}</p>
-                  )}
+                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.5)", margin: "0 0 10px" }}>{image.category}</p>
                   <div style={{ display: "flex", gap: "8px" }}>
                     <button type="button" onClick={() => handleEdit(image)} style={{ flex: 1, background: "none", border: "1px solid #E5E0D8", borderRadius: "2px", padding: "6px", cursor: "pointer", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#2D2424" }}>Edit</button>
                     <button type="button" onClick={() => handleDelete(image.id!, image.image_url)} disabled={deletingId === image.id} style={{ flex: 1, background: "none", border: "1px solid #fecaca", borderRadius: "2px", padding: "6px", cursor: "pointer", fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase", color: "#991b1b", opacity: deletingId === image.id ? 0.5 : 1 }}>
