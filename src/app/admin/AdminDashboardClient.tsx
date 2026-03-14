@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 
-const INACTIVITY_LIMIT = 29 * 60 * 1000; // 29 minutes — then show warning
-const WARNING_DURATION = 60 * 1000;       // 1 minute warning before logout
+const INACTIVITY_LIMIT = 29 * 60 * 1000;
+const WARNING_DURATION = 60 * 1000;
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -35,11 +35,9 @@ export default function AdminDashboard() {
     setCountdown(60);
 
     inactivityTimer.current = setTimeout(() => {
-      // Show warning after 29 minutes of inactivity
       setShowWarning(true);
       setCountdown(60);
 
-      // Start countdown
       countdownInterval.current = setInterval(() => {
         setCountdown(prev => {
           if (prev <= 1) {
@@ -50,7 +48,6 @@ export default function AdminDashboard() {
         });
       }, 1000);
 
-      // Auto logout after 1 more minute
       warningTimer.current = setTimeout(() => {
         logout();
       }, WARNING_DURATION);
