@@ -159,9 +159,15 @@ export default function ShopPage() {
           LuxeNails
         </a>
         <div className="nav-links" style={{ display: "flex", gap: "28px", alignItems: "center" }}>
-          {["Home", "Services", "Gallery", "Booking", "Contact"].map(link => (
-            <a key={link} href={`/${link.toLowerCase()}`} style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(253,251,247,0.7)", textDecoration: "none", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              {link}
+          {[
+            { label: "Home", href: "/" },
+            { label: "Services", href: "/services" },
+            { label: "Gallery", href: "/gallery" },
+            { label: "Booking", href: "/booking" },
+            { label: "Contact", href: "/contact" },
+          ].map(link => (
+            <a key={link.label} href={link.href} style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(253,251,247,0.7)", textDecoration: "none", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {link.label}
             </a>
           ))}
           <a href="/shop" style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.gold, textDecoration: "none", letterSpacing: "0.08em", textTransform: "uppercase", borderBottom: `1px solid ${colors.gold}`, paddingBottom: "2px" }}>
@@ -383,7 +389,6 @@ export default function ShopPage() {
                       display: "flex", gap: "14px", padding: "14px",
                       background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`, alignItems: "center",
                     }}>
-                      {/* Cart thumbnail — smart placeholder */}
                       <div style={{
                         width: "54px", height: "54px", borderRadius: "4px", overflow: "hidden", flexShrink: 0,
                         background: item.image_url ? colors.sand : placeholder.bg,
