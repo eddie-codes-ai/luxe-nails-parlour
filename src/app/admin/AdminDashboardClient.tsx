@@ -16,6 +16,7 @@ export default function AdminDashboard() {
   const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
   const warningTimer = useRef<NodeJS.Timeout | null>(null);
   const countdownInterval = useRef<NodeJS.Timeout | null>(null);
+  const showWarningRef = useRef(false);
 
   const logout = useCallback(async () => {
     setSigningOut(true);
@@ -31,10 +32,12 @@ export default function AdminDashboard() {
 
   const startInactivityTimer = useCallback(() => {
     clearAllTimers();
+    showWarningRef.current = false;
     setShowWarning(false);
     setCountdown(60);
 
     inactivityTimer.current = setTimeout(() => {
+      showWarningRef.current = true;
       setShowWarning(true);
       setCountdown(60);
 
@@ -71,7 +74,7 @@ export default function AdminDashboard() {
 
     const events = ["mousemove", "mousedown", "keydown", "scroll", "touchstart"];
     const handleActivity = () => {
-      if (!showWarning) startInactivityTimer();
+      if (!showWarningRef.current) startInactivityTimer();
     };
 
     events.forEach(e => window.addEventListener(e, handleActivity));
@@ -80,7 +83,8 @@ export default function AdminDashboard() {
       clearAllTimers();
       events.forEach(e => window.removeEventListener(e, handleActivity));
     };
-  }, [startInactivityTimer, showWarning]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{
