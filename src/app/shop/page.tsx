@@ -16,6 +16,21 @@ const colors = {
 
 const WHATSAPP_NUMBER = "254758550286";
 
+// Category icon + background colour map
+const categoryPlaceholder: Record<string, { icon: string; bg: string }> = {
+  "Oils":               { icon: "🧴", bg: "#FFF8EE" },
+  "Gels":               { icon: "💅", bg: "#FFF0F5" },
+  "Jewellery":          { icon: "💎", bg: "#F3F0FF" },
+  "Tools":              { icon: "🔧", bg: "#F0F4FF" },
+  "Nail Kits":          { icon: "🎁", bg: "#F0FFF4" },
+  "Nail Art":           { icon: "🎨", bg: "#FFF5F5" },
+  "Treatments & Care":  { icon: "🌿", bg: "#F0FFF8" },
+  "Accessories":        { icon: "✨", bg: "#FFFBF0" },
+};
+
+const getPlaceholder = (category: string) =>
+  categoryPlaceholder[category] || { icon: "🛍️", bg: "#F5F5F5" };
+
 interface Product {
   id: number;
   name: string;
@@ -40,7 +55,6 @@ export default function ShopPage() {
   const [form, setForm] = useState({ name: "", phone: "" });
   const [toast, setToast] = useState<string | null>(null);
 
-  // Fetch products from Supabase via public API
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
@@ -56,7 +70,6 @@ export default function ShopPage() {
     fetchProducts();
   }, []);
 
-  // Build categories dynamically from fetched products
   const categories = ["All", ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
   const filtered = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
   const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -198,14 +211,12 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* Loading State */}
         {loading ? (
           <div style={{ textAlign: "center", padding: "80px 40px" }}>
             <div style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.gold, marginBottom: "12px" }}>✦</div>
             <p style={{ fontFamily: fonts.body, fontSize: "14px", color: "rgba(45,36,36,0.4)", letterSpacing: "0.1em" }}>Loading products...</p>
           </div>
         ) : products.length === 0 ? (
-          /* Empty State */
           <div style={{ textAlign: "center", padding: "80px 40px" }}>
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>🛍️</div>
             <p style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.espresso, fontWeight: 300, marginBottom: "8px" }}>Coming Soon</p>
@@ -236,6 +247,7 @@ export default function ShopPage() {
             }}>
               {filtered.map(product => {
                 const inCart = cart.find(i => i.id === product.id);
+                const placeholder = getPlaceholder(product.category);
                 return (
                   <div key={product.id} className="product-card" style={{
                     background: "#fff", borderRadius: "4px", overflow: "hidden",
@@ -254,20 +266,34 @@ export default function ShopPage() {
                       </div>
                     )}
 
-                    {/* Product Image */}
-                    <div style={{ height: "190px", background: colors.sand, overflow: "hidden" }}>
+                    {/* Product Image / Smart Placeholder */}
+                    <div style={{ height: "190px", background: product.image_url ? colors.sand : placeholder.bg, overflow: "hidden" }}>
                       {product.image_url ? (
                         <img
                           src={product.image_url}
                           alt={product.name}
                           style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                          onError={e => {
+                            const parent = (e.target as HTMLImageElement).parentElement;
+                            if (parent) {
+                              parent.style.background = placeholder.bg;
+                              (e.target as HTMLImageElement).style.display = "none";
+                            }
+                          }}
                         />
                       ) : (
-                        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "40px" }}>🧴</span>
-                          <span style={{ fontFamily: fonts.body, fontSize: "10px", color: "rgba(45,36,36,0.35)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                            No image
+                        <div style={{
+                          width: "100%", height: "100%",
+                          display: "flex", flexDirection: "column",
+                          alignItems: "center", justifyContent: "center", gap: "10px",
+                        }}>
+                          <span style={{ fontSize: "52px", lineHeight: 1 }}>{placeholder.icon}</span>
+                          <span style={{
+                            fontFamily: fonts.body, fontSize: "9px",
+                            color: "rgba(45,36,36,0.3)", letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                          }}>
+                            Photo coming soon
                           </span>
                         </div>
                       )}
@@ -350,43 +376,51 @@ export default function ShopPage() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                {cart.map(item => (
-                  <div key={item.id} style={{
-                    display: "flex", gap: "14px", padding: "14px",
-                    background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`, alignItems: "center",
-                  }}>
-                    <div style={{ width: "54px", height: "54px", background: colors.sand, borderRadius: "4px", overflow: "hidden", flexShrink: 0 }}>
-                      {item.image_url ? (
-                        <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                      ) : (
-                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>🧴</div>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontFamily: fonts.heading, fontSize: "17px", color: colors.espresso, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {item.name}
-                      </p>
-                      <p style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.gold, marginTop: "2px" }}>
-                        KSh {item.price.toLocaleString()} each
-                      </p>
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
-                        <button onClick={() => updateQty(item.id, -1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>−</button>
-                        <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600 }}>{item.quantity}</span>
-                        <button onClick={() => updateQty(item.id, 1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>+</button>
-                        <button className="remove-btn" onClick={() => removeItem(item.id)} style={{
-                          background: "none", border: "none", cursor: "pointer",
-                          fontFamily: fonts.body, fontSize: "12px", color: "rgba(45,36,36,0.35)",
-                          letterSpacing: "0.05em", marginLeft: "4px",
-                        }}>
-                          Remove
-                        </button>
+                {cart.map(item => {
+                  const placeholder = getPlaceholder(item.category);
+                  return (
+                    <div key={item.id} style={{
+                      display: "flex", gap: "14px", padding: "14px",
+                      background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`, alignItems: "center",
+                    }}>
+                      {/* Cart thumbnail — smart placeholder */}
+                      <div style={{
+                        width: "54px", height: "54px", borderRadius: "4px", overflow: "hidden", flexShrink: 0,
+                        background: item.image_url ? colors.sand : placeholder.bg,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        ) : (
+                          <span style={{ fontSize: "26px" }}>{placeholder.icon}</span>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontFamily: fonts.heading, fontSize: "17px", color: colors.espresso, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {item.name}
+                        </p>
+                        <p style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.gold, marginTop: "2px" }}>
+                          KSh {item.price.toLocaleString()} each
+                        </p>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "8px" }}>
+                          <button onClick={() => updateQty(item.id, -1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>−</button>
+                          <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600 }}>{item.quantity}</span>
+                          <button onClick={() => updateQty(item.id, 1)} style={{ width: "26px", height: "26px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "14px" }}>+</button>
+                          <button className="remove-btn" onClick={() => removeItem(item.id)} style={{
+                            background: "none", border: "none", cursor: "pointer",
+                            fontFamily: fonts.body, fontSize: "12px", color: "rgba(45,36,36,0.35)",
+                            letterSpacing: "0.05em", marginLeft: "4px",
+                          }}>
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div style={{ fontFamily: fonts.heading, fontSize: "18px", color: colors.espresso, fontWeight: 500, flexShrink: 0 }}>
+                        KSh {(item.price * item.quantity).toLocaleString()}
                       </div>
                     </div>
-                    <div style={{ fontFamily: fonts.heading, fontSize: "18px", color: colors.espresso, fontWeight: 500, flexShrink: 0 }}>
-                      KSh {(item.price * item.quantity).toLocaleString()}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -434,7 +468,6 @@ export default function ShopPage() {
                 <button onClick={() => setCheckoutOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: colors.espresso }}>✕</button>
               </div>
 
-              {/* Order Summary */}
               <div style={{ background: "#fff", border: `1px solid ${colors.sand}`, borderRadius: "4px", padding: "18px", marginBottom: "24px" }}>
                 <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "12px" }}>Order Summary</p>
                 {cart.map(item => (
@@ -449,7 +482,6 @@ export default function ShopPage() {
                 </div>
               </div>
 
-              {/* Details */}
               <div style={{ marginBottom: "22px" }}>
                 <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "14px" }}>Your Details</p>
                 {[
@@ -473,7 +505,6 @@ export default function ShopPage() {
                 ))}
               </div>
 
-              {/* Payment */}
               <div style={{ marginBottom: "28px" }}>
                 <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "14px" }}>Payment Method</p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
