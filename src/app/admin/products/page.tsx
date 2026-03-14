@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Product {
@@ -14,6 +14,11 @@ interface Product {
   category: string;
 }
 
+interface Category {
+  id: number;
+  name: string;
+}
+
 const emptyProduct: Product = {
   name: "",
   price: 0,
@@ -24,18 +29,12 @@ const emptyProduct: Product = {
   category: "",
 };
 
-const CATEGORIES = [
-  "Nail Polish",
-  "Nail Tools",
-  "Nail Kits",
-  "Nail Art",
-  "Treatments & Care",
-  "Accessories",
-];
-
 export default function AdminProducts() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -45,6 +44,9 @@ export default function AdminProducts() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [hoverBack, setHoverBack] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -54,13 +56,22 @@ export default function AdminProducts() {
     setLoading(false);
   };
 
+  const fetchCategories = async () => {
+    const res = await fetch("/api/admin/categories");
+    const data = await res.json();
+    setCategories(data.categories || []);
+  };
+
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setForm(product);
+    setPreviewUrl(product.image_url || "");
+    setUploadMode(product.image_url?.includes("supabase") ? "upload" : "url");
     setShowForm(true);
     setError("");
     setSuccess("");
@@ -70,6 +81,7 @@ export default function AdminProducts() {
   const handleAddNew = () => {
     setEditingProduct(null);
     setForm(emptyProduct);
+    setPreviewUrl("");
     setShowForm(true);
     setError("");
     setSuccess("");
@@ -80,7 +92,27 @@ export default function AdminProducts() {
     setShowForm(false);
     setEditingProduct(null);
     setForm(emptyProduct);
+    setPreviewUrl("");
     setError("");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setPreviewUrl(localUrl);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/admin/gallery", { method: "PATCH", body: formData });
+    const data = await res.json();
+    if (data.success) {
+      setForm(prev => ({ ...prev, image_url: data.url }));
+      setPreviewUrl(data.url);
+    } else {
+      setError("Image upload failed. Please try again.");
+    }
+    setUploading(false);
   };
 
   const handleSave = async () => {
@@ -90,29 +122,25 @@ export default function AdminProducts() {
     }
     setSaving(true);
     setError("");
-
     const method = editingProduct?.id ? "PUT" : "POST";
     const body = editingProduct?.id ? { ...form, id: editingProduct.id } : form;
-
     const res = await fetch("/api/admin/products", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-
     const data = await res.json();
-
     if (data.success) {
       setSuccess(editingProduct?.id ? "Product updated!" : "Product added!");
       setShowForm(false);
       setEditingProduct(null);
       setForm(emptyProduct);
+      setPreviewUrl("");
       fetchProducts();
       setTimeout(() => setSuccess(""), 3000);
     } else {
       setError("Something went wrong. Please try again.");
     }
-
     setSaving(false);
   };
 
@@ -143,6 +171,16 @@ export default function AdminProducts() {
   const labelStyle = {
     fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase" as const,
     color: "rgba(45,36,36,0.5)", marginBottom: "6px", display: "block",
+  };
+
+  const selectStyle = {
+    ...inputStyle,
+    appearance: "none" as const,
+    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D2424' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+    backgroundRepeat: "no-repeat" as const,
+    backgroundPosition: "right 14px center" as const,
+    paddingRight: "36px",
+    cursor: "pointer",
   };
 
   return (
@@ -176,28 +214,40 @@ export default function AdminProducts() {
             </span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleAddNew}
-          style={{
-            background: "#C5A358", border: "none", borderRadius: "2px",
-            padding: "8px 20px", cursor: "pointer", fontSize: "12px",
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            color: "#2D2424", fontWeight: 600,
-          }}
-        >
-          + Add Product
-        </button>
+        <div style={{ display: "flex", gap: "12px" }}>
+          <button
+            type="button"
+            onClick={() => router.push("/admin/categories")}
+            style={{
+              background: "none", border: "1px solid rgba(197,163,88,0.4)", borderRadius: "2px",
+              padding: "8px 20px", cursor: "pointer", fontSize: "12px",
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              color: "#C5A358", fontWeight: 500,
+            }}
+          >
+            Manage Categories
+          </button>
+          <button
+            type="button"
+            onClick={handleAddNew}
+            style={{
+              background: "#C5A358", border: "none", borderRadius: "2px",
+              padding: "8px 20px", cursor: "pointer", fontSize: "12px",
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              color: "#2D2424", fontWeight: 600,
+            }}
+          >
+            + Add Product
+          </button>
+        </div>
       </div>
 
       <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "48px 40px" }}>
 
-        {/* Success message */}
         {success && (
           <div style={{
             background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px",
-            padding: "12px 16px", marginBottom: "24px",
-            fontSize: "13px", color: "#166534",
+            padding: "12px 16px", marginBottom: "24px", fontSize: "13px", color: "#166534",
           }}>
             ✅ {success}
           </div>
@@ -219,23 +269,93 @@ export default function AdminProducts() {
             {error && (
               <div style={{
                 background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "4px",
-                padding: "12px 16px", marginBottom: "20px",
-                fontSize: "13px", color: "#991b1b",
+                padding: "12px 16px", marginBottom: "20px", fontSize: "13px", color: "#991b1b",
               }}>
                 ⚠️ {error}
               </div>
             )}
 
+            {/* Image Source Toggle */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={labelStyle}>Product Image</label>
+              <div style={{ display: "flex", marginBottom: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("upload")}
+                  style={{
+                    padding: "8px 20px", fontSize: "12px", cursor: "pointer",
+                    letterSpacing: "0.1em", textTransform: "uppercase",
+                    background: uploadMode === "upload" ? "#2D2424" : "#fff",
+                    color: uploadMode === "upload" ? "#FDFBF7" : "rgba(45,36,36,0.5)",
+                    border: "1px solid #E5E0D8", borderRadius: "2px 0 0 2px",
+                  }}
+                >
+                  📎 Upload from Device
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("url")}
+                  style={{
+                    padding: "8px 20px", fontSize: "12px", cursor: "pointer",
+                    letterSpacing: "0.1em", textTransform: "uppercase",
+                    background: uploadMode === "url" ? "#2D2424" : "#fff",
+                    color: uploadMode === "url" ? "#FDFBF7" : "rgba(45,36,36,0.5)",
+                    border: "1px solid #E5E0D8", borderLeft: "none", borderRadius: "0 2px 2px 0",
+                  }}
+                >
+                  🔗 Paste URL
+                </button>
+              </div>
+
+              {uploadMode === "upload" ? (
+                <div>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: "2px dashed #E5E0D8", borderRadius: "4px",
+                      padding: "32px", textAlign: "center", cursor: "pointer",
+                      background: "#FDFBF7",
+                    }}
+                  >
+                    {previewUrl ? (
+                      <img src={previewUrl} alt="Preview" style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "contain", borderRadius: "4px" }} />
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: "32px", marginBottom: "8px" }}>📸</div>
+                        <p style={{ fontSize: "13px", color: "rgba(45,36,36,0.4)", margin: 0 }}>
+                          {uploading ? "Uploading..." : "Click to select a photo from your device"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileUpload} style={{ display: "none" }} />
+                  {previewUrl && !uploading && <p style={{ fontSize: "11px", color: "#166534", marginTop: "6px" }}>✅ Image uploaded successfully</p>}
+                  {uploading && <p style={{ fontSize: "11px", color: "#C5A358", marginTop: "6px" }}>⏳ Uploading image...</p>}
+                </div>
+              ) : (
+                <div>
+                  <input
+                    style={inputStyle}
+                    value={form.image_url}
+                    onChange={e => { setForm({ ...form, image_url: e.target.value }); setPreviewUrl(e.target.value); }}
+                    placeholder="https://... paste image URL here"
+                  />
+                  {previewUrl && (
+                    <img src={previewUrl} alt="Preview" style={{ marginTop: "12px", maxHeight: "200px", maxWidth: "100%", objectFit: "contain", borderRadius: "4px" }} onError={() => setPreviewUrl("")} />
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Form Grid */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-
               <div>
                 <label style={labelStyle}>Product Name *</label>
                 <input
                   style={inputStyle}
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="e.g. Gel Nail Polish"
+                  placeholder="e.g. Cuticle Repair Oil"
                 />
               </div>
 
@@ -246,31 +366,31 @@ export default function AdminProducts() {
                   type="number"
                   value={form.price}
                   onChange={e => setForm({ ...form, price: Number(e.target.value) })}
-                  placeholder="e.g. 1500"
+                  placeholder="e.g. 450"
                 />
               </div>
 
-              {/* Category Dropdown */}
               <div>
                 <label style={labelStyle}>Category *</label>
                 <select
-                  style={{
-                    ...inputStyle,
-                    appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D2424' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 14px center",
-                    paddingRight: "36px",
-                    cursor: "pointer",
-                  }}
+                  style={selectStyle}
                   value={form.category}
                   onChange={e => setForm({ ...form, category: e.target.value })}
                 >
                   <option value="">Select a category...</option>
-                  {CATEGORIES.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
+                <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                  Need a new category?{" "}
+                  <span
+                    onClick={() => router.push("/admin/categories")}
+                    style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Manage categories
+                  </span>
+                </p>
               </div>
 
               <div>
@@ -280,17 +400,7 @@ export default function AdminProducts() {
                   type="number"
                   value={form.stock_quantity}
                   onChange={e => setForm({ ...form, stock_quantity: Number(e.target.value) })}
-                  placeholder="e.g. 10"
-                />
-              </div>
-
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Image URL</label>
-                <input
-                  style={inputStyle}
-                  value={form.image_url}
-                  onChange={e => setForm({ ...form, image_url: e.target.value })}
-                  placeholder="https://..."
+                  placeholder="e.g. 20"
                 />
               </div>
 
@@ -313,23 +423,21 @@ export default function AdminProducts() {
                   style={{ width: "16px", height: "16px", cursor: "pointer" }}
                 />
                 <label htmlFor="in_stock" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
-                  In Stock
+                  In Stock (visible on shop page)
                 </label>
               </div>
-
             </div>
 
-            {/* Form Buttons */}
             <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || uploading}
                 style={{
                   background: "#2D2424", border: "none", borderRadius: "2px",
                   padding: "10px 28px", cursor: saving ? "not-allowed" : "pointer",
                   fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "#FDFBF7", fontWeight: 600, opacity: saving ? 0.6 : 1,
+                  color: "#FDFBF7", fontWeight: 600, opacity: saving || uploading ? 0.6 : 1,
                 }}
               >
                 {saving ? "Saving..." : editingProduct?.id ? "Update Product" : "Save Product"}
@@ -349,7 +457,7 @@ export default function AdminProducts() {
           </div>
         )}
 
-        {/* Products Table */}
+        {/* Products List */}
         <h2 style={{
           fontFamily: "'Cormorant Garamond', serif", fontSize: "30px",
           color: "#2D2424", fontWeight: 300, marginBottom: "24px",
@@ -390,21 +498,19 @@ export default function AdminProducts() {
                   padding: "20px 24px", display: "flex", alignItems: "center", gap: "20px",
                 }}
               >
-                {/* Image */}
                 <div style={{
-                  width: "60px", height: "60px", borderRadius: "4px",
+                  width: "64px", height: "64px", borderRadius: "4px",
                   background: "#E5E0D8", flexShrink: 0, overflow: "hidden",
                 }}>
                   {product.image_url ? (
                     <img src={product.image_url} alt={product.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+                    <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>
                       🛍️
                     </div>
                   )}
                 </div>
 
-                {/* Info */}
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "4px" }}>
                     <span style={{ fontSize: "15px", fontWeight: 600, color: "#2D2424" }}>{product.name}</span>
@@ -420,9 +526,13 @@ export default function AdminProducts() {
                   <div style={{ fontSize: "12px", color: "rgba(45,36,36,0.5)" }}>
                     KES {Number(product.price).toLocaleString()} · {product.category} · Qty: {product.stock_quantity}
                   </div>
+                  {product.description && (
+                    <div style={{ fontSize: "12px", color: "rgba(45,36,36,0.4)", marginTop: "4px" }}>
+                      {product.description}
+                    </div>
+                  )}
                 </div>
 
-                {/* Actions */}
                 <div style={{ display: "flex", gap: "8px" }}>
                   <button
                     type="button"

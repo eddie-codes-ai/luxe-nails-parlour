@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const fonts = {
   heading: "'Cormorant Garamond', Georgia, serif",
@@ -16,27 +16,22 @@ const colors = {
 
 const WHATSAPP_NUMBER = "254758550286";
 
-const products = [
-  { id: 1, category: "Oils", name: "Cuticle Repair Oil", price: 450, description: "Nourishing blend to soften and restore cuticles", emoji: "🧴" },
-  { id: 2, category: "Oils", name: "Nail Growth Oil", price: 550, description: "Strengthens and promotes healthy nail growth", emoji: "💧" },
-  { id: 3, category: "Oils", name: "Luxury Rose Cuticle Oil", price: 650, description: "Premium rose-infused cuticle treatment", emoji: "🌹" },
-  { id: 4, category: "Gels", name: "Clear Base Gel", price: 800, description: "High-shine base coat for long-lasting manicures", emoji: "✨" },
-  { id: 5, category: "Gels", name: "UV Top Coat Gel", price: 750, description: "Protective top coat for chip-free finish", emoji: "💅" },
-  { id: 6, category: "Gels", name: "Colour Gel Set (3pcs)", price: 1200, description: "Set of 3 trending gel colours", emoji: "🎨" },
-  { id: 7, category: "Jewellery", name: "Nail Charm Pack", price: 350, description: "Assorted charms for nail art designs", emoji: "💎" },
-  { id: 8, category: "Jewellery", name: "Crystal Rhinestone Set", price: 500, description: "Sparkling crystals for glam nail art", emoji: "🔮" },
-  { id: 9, category: "Jewellery", name: "Gold Foil Flakes", price: 300, description: "Real gold foil for luxe nail designs", emoji: "✨" },
-  { id: 10, category: "Tools", name: "Cuticle Pusher", price: 250, description: "Stainless steel cuticle tool", emoji: "🔧" },
-  { id: 11, category: "Tools", name: "Nail File Set (5pcs)", price: 400, description: "Professional grit nail files", emoji: "📋" },
-  { id: 12, category: "Tools", name: "Nail Buffer Block", price: 200, description: "4-way buffer for natural shine", emoji: "🟫" },
-];
+interface Product {
+  id: number;
+  name: string;
+  price: number;
+  description: string;
+  image_url: string;
+  category: string;
+  in_stock: boolean;
+  stock_quantity: number;
+}
 
-const categories = ["All", "Oils", "Gels", "Jewellery", "Tools"];
-
-type Product = typeof products[0];
 type CartItem = Product & { quantity: number };
 
 export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("All");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
@@ -45,6 +40,24 @@ export default function ShopPage() {
   const [form, setForm] = useState({ name: "", phone: "" });
   const [toast, setToast] = useState<string | null>(null);
 
+  // Fetch products from Supabase via public API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/products");
+        const data = await res.json();
+        setProducts(data.products || []);
+      } catch {
+        setProducts([]);
+      }
+      setLoading(false);
+    };
+    fetchProducts();
+  }, []);
+
+  // Build categories dynamically from fetched products
+  const categories = ["All", ...Array.from(new Set(products.map(p => p.category).filter(Boolean)))];
   const filtered = activeCategory === "All" ? products : products.filter(p => p.category === activeCategory);
   const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const itemCount = cart.reduce((sum, i) => sum + i.quantity, 0);
@@ -55,7 +68,7 @@ export default function ShopPage() {
       if (existing) return prev.map(i => i.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
       return [...prev, { ...product, quantity: 1 }];
     });
-    setToast(`${product.emoji} ${product.name} added to cart`);
+    setToast(`${product.name} added to cart`);
     setTimeout(() => setToast(null), 2500);
   };
 
@@ -66,21 +79,17 @@ export default function ShopPage() {
     );
   };
 
-  const removeItem = (id: number) => {
-    setCart(prev => prev.filter(i => i.id !== id));
-  };
+  const removeItem = (id: number) => setCart(prev => prev.filter(i => i.id !== id));
 
   const sendToWhatsApp = () => {
     if (!form.name.trim() || !form.phone.trim()) {
       alert("Please enter your name and phone number before sending.");
       return;
     }
-
-    const itemLines = cart.map(i => `  • ${i.emoji} ${i.name} × ${i.quantity} — KSh ${(i.price * i.quantity).toLocaleString()}`).join("\n");
+    const itemLines = cart.map(i => `  • ${i.name} × ${i.quantity} – KSh ${(i.price * i.quantity).toLocaleString()}`).join("\n");
     const paymentNote = paymentMethod === "mpesa"
       ? "💳 Payment: M-Pesa (please send till number)"
       : "💵 Payment: Cash on delivery/pickup";
-
     const message =
       `Hi LuxeNails! 💅 I'd like to place an order:\n\n` +
       `${itemLines}\n\n` +
@@ -88,7 +97,6 @@ export default function ShopPage() {
       `${paymentNote}\n` +
       `👤 Name: ${form.name}\n` +
       `📞 Phone: ${form.phone}`;
-
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
     setCheckoutOpen(false);
@@ -113,11 +121,9 @@ export default function ShopPage() {
         @keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
         .overlay { animation: fadeIn 0.2s ease; }
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
-        .remove-btn { transition: color 0.2s; }
         .remove-btn:hover { color: #c0392b !important; }
         .toast { animation: toastIn 0.3s ease; }
         @keyframes toastIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-        .wa-btn { transition: background 0.2s ease, transform 0.1s ease; }
         .wa-btn:hover { background: #1ebc59 !important; transform: scale(1.01); }
         input:focus { border-color: ${colors.gold} !important; outline: none; }
         @media (max-width: 600px) {
@@ -129,7 +135,7 @@ export default function ShopPage() {
         }
       `}</style>
 
-      {/* ── NAVBAR ── */}
+      {/* NAVBAR */}
       <nav style={{
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
         background: colors.espresso, height: 70,
@@ -149,8 +155,6 @@ export default function ShopPage() {
             Shop
           </a>
         </div>
-
-        {/* Cart Button */}
         <button onClick={() => setCartOpen(true)} style={{
           background: "none", border: `1px solid ${colors.gold}`, borderRadius: "4px",
           padding: "8px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "8px",
@@ -167,7 +171,7 @@ export default function ShopPage() {
         </button>
       </nav>
 
-      {/* ── MAIN ── */}
+      {/* MAIN */}
       <main style={{ paddingTop: 70, minHeight: "100vh", background: colors.cream }}>
 
         {/* Hero */}
@@ -194,115 +198,128 @@ export default function ShopPage() {
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="cat-bar" style={{ padding: "32px 40px 0", display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
-          {categories.map(cat => (
-            <button key={cat} className="cat-btn" onClick={() => setActiveCategory(cat)} style={{
-              fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
-              padding: "10px 22px", borderRadius: "2px", cursor: "pointer",
-              background: activeCategory === cat ? colors.gold : "transparent",
-              color: colors.espresso,
-              border: `1px solid ${activeCategory === cat ? colors.gold : colors.sand}`,
-              fontWeight: activeCategory === cat ? 600 : 400,
-            }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Product Grid */}
-        <div className="product-grid" style={{
-          display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: "24px", padding: "32px 40px 80px", maxWidth: "1200px", margin: "0 auto",
-        }}>
-          {filtered.map(product => {
-            const inCart = cart.find(i => i.id === product.id);
-            return (
-              <div key={product.id} className="product-card" style={{
-                background: "#fff", borderRadius: "4px", overflow: "hidden",
-                border: `1px solid ${inCart ? colors.gold : colors.sand}`,
-                position: "relative",
-              }}>
-                {inCart && (
-                  <div style={{
-                    position: "absolute", top: "12px", right: "12px",
-                    background: colors.gold, color: colors.espresso,
-                    borderRadius: "50%", width: "26px", height: "26px",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "12px", fontWeight: 700, fontFamily: fonts.body,
-                    zIndex: 2,
-                  }}>
-                    {inCart.quantity}
-                  </div>
-                )}
-
-                {/* Image */}
-                <div style={{
-                  height: "190px", background: colors.sand,
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px",
+        {/* Loading State */}
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "80px 40px" }}>
+            <div style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.gold, marginBottom: "12px" }}>✦</div>
+            <p style={{ fontFamily: fonts.body, fontSize: "14px", color: "rgba(45,36,36,0.4)", letterSpacing: "0.1em" }}>Loading products...</p>
+          </div>
+        ) : products.length === 0 ? (
+          /* Empty State */
+          <div style={{ textAlign: "center", padding: "80px 40px" }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px" }}>🛍️</div>
+            <p style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.espresso, fontWeight: 300, marginBottom: "8px" }}>Coming Soon</p>
+            <p style={{ fontFamily: fonts.body, fontSize: "14px", color: "rgba(45,36,36,0.45)" }}>Our shop products are being stocked. Check back soon!</p>
+          </div>
+        ) : (
+          <>
+            {/* Category Filter */}
+            <div className="cat-bar" style={{ padding: "32px 40px 0", display: "flex", gap: "10px", flexWrap: "wrap", justifyContent: "center" }}>
+              {categories.map(cat => (
+                <button key={cat} className="cat-btn" onClick={() => setActiveCategory(cat)} style={{
+                  fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
+                  padding: "10px 22px", borderRadius: "2px", cursor: "pointer",
+                  background: activeCategory === cat ? colors.gold : "transparent",
+                  color: colors.espresso,
+                  border: `1px solid ${activeCategory === cat ? colors.gold : colors.sand}`,
+                  fontWeight: activeCategory === cat ? 600 : 400,
                 }}>
-                  <span style={{ fontSize: "50px" }}>{product.emoji}</span>
-                  <span style={{ fontFamily: fonts.body, fontSize: "10px", color: "rgba(45,36,36,0.35)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
-                    Photo coming soon
-                  </span>
-                </div>
+                  {cat}
+                </button>
+              ))}
+            </div>
 
-                {/* Info */}
-                <div style={{ padding: "18px 20px 20px" }}>
-                  <span style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: colors.gold, fontWeight: 500 }}>
-                    {product.category}
-                  </span>
-                  <h3 style={{ fontFamily: fonts.heading, fontSize: "21px", color: colors.espresso, fontWeight: 500, margin: "5px 0 7px", lineHeight: 1.2 }}>
-                    {product.name}
-                  </h3>
-                  <p style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(45,36,36,0.55)", lineHeight: 1.7, marginBottom: "16px" }}>
-                    {product.description}
-                  </p>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
-                    <span style={{ fontFamily: fonts.heading, fontSize: "22px", color: colors.espresso, fontWeight: 500 }}>
-                      KSh {product.price.toLocaleString()}
-                    </span>
-
-                    {inCart ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <button onClick={() => updateQty(product.id, -1)} style={{
-                          width: "30px", height: "30px", background: colors.sand, border: "none",
-                          borderRadius: "2px", cursor: "pointer", fontSize: "16px",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fonts.body,
-                        }}>−</button>
-                        <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600, minWidth: "20px", textAlign: "center" }}>{inCart.quantity}</span>
-                        <button onClick={() => updateQty(product.id, 1)} style={{
-                          width: "30px", height: "30px", background: colors.gold, border: "none",
-                          borderRadius: "2px", cursor: "pointer", fontSize: "16px",
-                          display: "flex", alignItems: "center", justifyContent: "center", fontFamily: fonts.body,
-                        }}>+</button>
-                      </div>
-                    ) : (
-                      <button className="add-btn" onClick={() => addToCart(product)} style={{
-                        background: colors.gold, color: colors.espresso, border: "none",
-                        padding: "10px 18px", borderRadius: "2px", cursor: "pointer",
-                        fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.08em",
-                        textTransform: "uppercase", fontWeight: 600,
+            {/* Product Grid */}
+            <div className="product-grid" style={{
+              display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+              gap: "24px", padding: "32px 40px 80px", maxWidth: "1200px", margin: "0 auto",
+            }}>
+              {filtered.map(product => {
+                const inCart = cart.find(i => i.id === product.id);
+                return (
+                  <div key={product.id} className="product-card" style={{
+                    background: "#fff", borderRadius: "4px", overflow: "hidden",
+                    border: `1px solid ${inCart ? colors.gold : colors.sand}`,
+                    position: "relative",
+                  }}>
+                    {inCart && (
+                      <div style={{
+                        position: "absolute", top: "12px", right: "12px",
+                        background: colors.gold, color: colors.espresso,
+                        borderRadius: "50%", width: "26px", height: "26px",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: "12px", fontWeight: 700, fontFamily: fonts.body, zIndex: 2,
                       }}>
-                        + Add
-                      </button>
+                        {inCart.quantity}
+                      </div>
                     )}
+
+                    {/* Product Image */}
+                    <div style={{ height: "190px", background: colors.sand, overflow: "hidden" }}>
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                          <span style={{ fontSize: "40px" }}>🧴</span>
+                          <span style={{ fontFamily: fonts.body, fontSize: "10px", color: "rgba(45,36,36,0.35)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                            No image
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div style={{ padding: "18px 20px 20px" }}>
+                      <span style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.15em", textTransform: "uppercase", color: colors.gold, fontWeight: 500 }}>
+                        {product.category}
+                      </span>
+                      <h3 style={{ fontFamily: fonts.heading, fontSize: "21px", color: colors.espresso, fontWeight: 500, margin: "5px 0 7px", lineHeight: 1.2 }}>
+                        {product.name}
+                      </h3>
+                      <p style={{ fontFamily: fonts.body, fontSize: "13px", color: "rgba(45,36,36,0.55)", lineHeight: 1.7, marginBottom: "16px" }}>
+                        {product.description}
+                      </p>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px" }}>
+                        <span style={{ fontFamily: fonts.heading, fontSize: "22px", color: colors.espresso, fontWeight: 500 }}>
+                          KSh {product.price.toLocaleString()}
+                        </span>
+                        {inCart ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <button onClick={() => updateQty(product.id, -1)} style={{ width: "30px", height: "30px", background: colors.sand, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                            <span style={{ fontFamily: fonts.body, fontSize: "14px", fontWeight: 600, minWidth: "20px", textAlign: "center" }}>{inCart.quantity}</span>
+                            <button onClick={() => updateQty(product.id, 1)} style={{ width: "30px", height: "30px", background: colors.gold, border: "none", borderRadius: "2px", cursor: "pointer", fontSize: "16px", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                          </div>
+                        ) : (
+                          <button className="add-btn" onClick={() => addToCart(product)} style={{
+                            background: colors.gold, color: colors.espresso, border: "none",
+                            padding: "10px 18px", borderRadius: "2px", cursor: "pointer",
+                            fontFamily: fonts.body, fontSize: "12px", letterSpacing: "0.08em",
+                            textTransform: "uppercase", fontWeight: 600,
+                          }}>
+                            + Add
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </main>
 
-      {/* ── CART OVERLAY ── */}
+      {/* CART OVERLAY */}
       {cartOpen && (
-        <div className="overlay" onClick={() => setCartOpen(false)} style={{
-          position: "fixed", inset: 0, background: "rgba(45,36,36,0.5)", zIndex: 200,
-        }} />
+        <div className="overlay" onClick={() => setCartOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(45,36,36,0.5)", zIndex: 200 }} />
       )}
 
-      {/* ── CART PANEL ── */}
+      {/* CART PANEL */}
       {cartOpen && (
         <div className="cart-panel" style={{
           position: "fixed", top: 0, right: 0, bottom: 0, width: "min(420px, 100vw)",
@@ -310,7 +327,6 @@ export default function ShopPage() {
           display: "flex", flexDirection: "column",
           boxShadow: "-8px 0 40px rgba(45,36,36,0.15)",
         }}>
-          {/* Header */}
           <div style={{ padding: "24px", borderBottom: `1px solid ${colors.sand}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h2 style={{ fontFamily: fonts.heading, fontSize: "28px", color: colors.espresso, fontWeight: 400 }}>
               Your Cart {itemCount > 0 && <span style={{ fontSize: "16px", color: colors.gold }}>({itemCount} items)</span>}
@@ -318,7 +334,6 @@ export default function ShopPage() {
             <button onClick={() => setCartOpen(false)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "22px", color: colors.espresso }}>✕</button>
           </div>
 
-          {/* Items */}
           <div style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
             {cart.length === 0 ? (
               <div style={{ textAlign: "center", paddingTop: "60px" }}>
@@ -338,14 +353,14 @@ export default function ShopPage() {
                 {cart.map(item => (
                   <div key={item.id} style={{
                     display: "flex", gap: "14px", padding: "14px",
-                    background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`,
-                    alignItems: "center",
+                    background: "#fff", borderRadius: "4px", border: `1px solid ${colors.sand}`, alignItems: "center",
                   }}>
-                    <div style={{
-                      width: "54px", height: "54px", background: colors.sand, borderRadius: "4px",
-                      display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", flexShrink: 0,
-                    }}>
-                      {item.emoji}
+                    <div style={{ width: "54px", height: "54px", background: colors.sand, borderRadius: "4px", overflow: "hidden", flexShrink: 0 }}>
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      ) : (
+                        <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px" }}>🧴</div>
+                      )}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontFamily: fonts.heading, fontSize: "17px", color: colors.espresso, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -376,7 +391,6 @@ export default function ShopPage() {
             )}
           </div>
 
-          {/* Footer */}
           {cart.length > 0 && (
             <div style={{ padding: "20px 24px", borderTop: `1px solid ${colors.sand}` }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
@@ -404,7 +418,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      {/* ── CHECKOUT MODAL ── */}
+      {/* CHECKOUT MODAL */}
       {checkoutOpen && (
         <>
           <div className="overlay" onClick={() => setCheckoutOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(45,36,36,0.6)", zIndex: 300 }} />
@@ -425,12 +439,8 @@ export default function ShopPage() {
                 <p style={{ fontFamily: fonts.body, fontSize: "10px", letterSpacing: "0.18em", textTransform: "uppercase", color: colors.gold, marginBottom: "12px" }}>Order Summary</p>
                 {cart.map(item => (
                   <div key={item.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
-                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso }}>
-                      {item.emoji} {item.name} × {item.quantity}
-                    </span>
-                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso, fontWeight: 500 }}>
-                      KSh {(item.price * item.quantity).toLocaleString()}
-                    </span>
+                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso }}>{item.name} × {item.quantity}</span>
+                    <span style={{ fontFamily: fonts.body, fontSize: "13px", color: colors.espresso, fontWeight: 500 }}>KSh {(item.price * item.quantity).toLocaleString()}</span>
                   </div>
                 ))}
                 <div style={{ borderTop: `1px solid ${colors.sand}`, paddingTop: "12px", marginTop: "10px", display: "flex", justifyContent: "space-between" }}>
@@ -447,7 +457,7 @@ export default function ShopPage() {
                   { label: "Phone Number", key: "phone", placeholder: "e.g. 0712 345 678", type: "tel" },
                 ].map(field => (
                   <div key={field.key} style={{ marginBottom: "14px" }}>
-                    <label style={{ fontFamily: fonts.body, fontSize: "12px", color: colors.espresso, display: "block", marginBottom: "6px", letterSpacing: "0.03em" }}>{field.label}</label>
+                    <label style={{ fontFamily: fonts.body, fontSize: "12px", color: colors.espresso, display: "block", marginBottom: "6px" }}>{field.label}</label>
                     <input
                       type={field.type}
                       placeholder={field.placeholder}
@@ -457,7 +467,6 @@ export default function ShopPage() {
                         width: "100%", padding: "11px 14px",
                         border: `1px solid ${colors.sand}`, borderRadius: "2px",
                         fontFamily: fonts.body, fontSize: "14px", color: colors.espresso, background: "#fff",
-                        transition: "border-color 0.2s",
                       }}
                     />
                   </div>
@@ -486,7 +495,6 @@ export default function ShopPage() {
                 </div>
               </div>
 
-              {/* Send Button */}
               <button className="wa-btn" onClick={sendToWhatsApp} style={{
                 width: "100%", padding: "16px", background: "#25D366", border: "none",
                 borderRadius: "2px", cursor: "pointer", fontFamily: fonts.body,
@@ -503,7 +511,8 @@ export default function ShopPage() {
           </div>
         </>
       )}
-      {/* ── TOAST NOTIFICATION ── */}
+
+      {/* TOAST */}
       {toast && (
         <div className="toast" style={{
           position: "fixed", bottom: "32px", left: "50%", transform: "translateX(-50%)",
@@ -512,8 +521,7 @@ export default function ShopPage() {
           letterSpacing: "0.04em", boxShadow: "0 8px 32px rgba(45,36,36,0.25)",
           display: "flex", alignItems: "center", gap: "10px", whiteSpace: "nowrap",
         }}>
-          {toast}
-          <span style={{ color: colors.gold, fontWeight: 700 }}>✓</span>
+          {toast} <span style={{ color: colors.gold, fontWeight: 700 }}>✓</span>
         </div>
       )}
     </>
