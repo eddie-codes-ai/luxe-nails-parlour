@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 interface Artist {
@@ -30,6 +30,7 @@ const emptyArtist: Artist = {
 
 export default function ArtistsClient() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,9 @@ export default function ArtistsClient() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [hoverBack, setHoverBack] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"upload" | "url">("upload");
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState("");
 
   const fetchArtists = async () => {
     setLoading(true);
@@ -57,6 +61,8 @@ export default function ArtistsClient() {
   const handleEdit = (artist: Artist) => {
     setEditingArtist(artist);
     setForm(artist);
+    setPreviewUrl(artist.photo_url || "");
+    setUploadMode(artist.photo_url?.includes("supabase") ? "upload" : "url");
     setShowForm(true);
     setError("");
     setSuccess("");
@@ -66,6 +72,8 @@ export default function ArtistsClient() {
   const handleAddNew = () => {
     setEditingArtist(null);
     setForm(emptyArtist);
+    setPreviewUrl("");
+    setUploadMode("upload");
     setShowForm(true);
     setError("");
     setSuccess("");
@@ -76,7 +84,27 @@ export default function ArtistsClient() {
     setShowForm(false);
     setEditingArtist(null);
     setForm(emptyArtist);
+    setPreviewUrl("");
     setError("");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const localUrl = URL.createObjectURL(file);
+    setPreviewUrl(localUrl);
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/admin/gallery", { method: "PATCH", body: formData });
+    const data = await res.json();
+    if (data.success) {
+      setForm(prev => ({ ...prev, photo_url: data.url }));
+      setPreviewUrl(data.url);
+    } else {
+      setError("Image upload failed. Please try again.");
+    }
+    setUploading(false);
   };
 
   const handleSave = async () => {
@@ -99,6 +127,7 @@ export default function ArtistsClient() {
       setShowForm(false);
       setEditingArtist(null);
       setForm(emptyArtist);
+      setPreviewUrl("");
       fetchArtists();
       setTimeout(() => setSuccess(""), 3000);
     } else {
@@ -218,9 +247,103 @@ export default function ArtistsClient() {
               </div>
             )}
 
+            {/* Photo Upload */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={labelStyle}>Artist Photo</label>
+              <div style={{ display: "flex", marginBottom: "12px" }}>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("upload")}
+                  style={{
+                    padding: "8px 20px", fontSize: "12px", cursor: "pointer",
+                    letterSpacing: "0.1em", textTransform: "uppercase",
+                    background: uploadMode === "upload" ? "#2D2424" : "#fff",
+                    color: uploadMode === "upload" ? "#FDFBF7" : "rgba(45,36,36,0.5)",
+                    border: "1px solid #E5E0D8", borderRadius: "2px 0 0 2px",
+                  }}
+                >
+                  📁 Upload from Device
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUploadMode("url")}
+                  style={{
+                    padding: "8px 20px", fontSize: "12px", cursor: "pointer",
+                    letterSpacing: "0.1em", textTransform: "uppercase",
+                    background: uploadMode === "url" ? "#2D2424" : "#fff",
+                    color: uploadMode === "url" ? "#FDFBF7" : "rgba(45,36,36,0.5)",
+                    border: "1px solid #E5E0D8", borderLeft: "none", borderRadius: "0 2px 2px 0",
+                  }}
+                >
+                  🔗 Paste URL
+                </button>
+              </div>
+
+              {uploadMode === "upload" ? (
+                <div>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    style={{
+                      border: "2px dashed #E5E0D8", borderRadius: "4px",
+                      padding: "32px", textAlign: "center", cursor: "pointer",
+                      background: "#FDFBF7",
+                    }}
+                  >
+                    {previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        alt="Preview"
+                        style={{ maxHeight: "200px", maxWidth: "100%", objectFit: "cover", borderRadius: "50%", width: "160px", height: "160px", margin: "0 auto", display: "block" }}
+                      />
+                    ) : (
+                      <div>
+                        <div style={{ fontSize: "32px", marginBottom: "8px" }}>📸</div>
+                        <p style={{ fontSize: "13px", color: "rgba(45,36,36,0.4)", margin: 0 }}>
+                          {uploading ? "Uploading..." : "Click to select a photo from your device"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    style={{ display: "none" }}
+                  />
+                  {previewUrl && !uploading && (
+                    <p style={{ fontSize: "11px", color: "#166534", marginTop: "6px" }}>✅ Photo uploaded successfully</p>
+                  )}
+                  {uploading && (
+                    <p style={{ fontSize: "11px", color: "#C5A358", marginTop: "6px" }}>⏳ Uploading photo...</p>
+                  )}
+                </div>
+              ) : (
+                <div>
+                  <input
+                    style={inputStyle}
+                    value={form.photo_url}
+                    onChange={e => {
+                      setForm({ ...form, photo_url: e.target.value });
+                      setPreviewUrl(e.target.value);
+                    }}
+                    placeholder="https://... paste image URL here"
+                  />
+                  {previewUrl && (
+                    <img
+                      src={previewUrl}
+                      alt="Preview"
+                      style={{ marginTop: "12px", width: "120px", height: "120px", objectFit: "cover", borderRadius: "50%", border: "3px solid #C5A358" }}
+                      onError={() => setPreviewUrl("")}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Form Fields */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
-              {/* Name */}
               <div>
                 <label style={labelStyle}>Full Name *</label>
                 <input
@@ -231,7 +354,6 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Role */}
               <div>
                 <label style={labelStyle}>Role *</label>
                 <input
@@ -242,7 +364,6 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Title */}
               <div>
                 <label style={labelStyle}>Title / Nickname</label>
                 <input
@@ -253,7 +374,6 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Specialty */}
               <div>
                 <label style={labelStyle}>Specialty *</label>
                 <input
@@ -264,7 +384,6 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Years Experience */}
               <div>
                 <label style={labelStyle}>Years Experience</label>
                 <input
@@ -277,18 +396,19 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Photo URL */}
-              <div>
-                <label style={labelStyle}>Photo URL</label>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "24px" }}>
                 <input
-                  style={inputStyle}
-                  value={form.photo_url}
-                  onChange={e => setForm({ ...form, photo_url: e.target.value })}
-                  placeholder="https://... (leave empty for initials avatar)"
+                  type="checkbox"
+                  id="mobile_available"
+                  checked={form.mobile_available}
+                  onChange={e => setForm({ ...form, mobile_available: e.target.checked })}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
                 />
+                <label htmlFor="mobile_available" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
+                  Available for Mobile Service (+KES 1,000)
+                </label>
               </div>
 
-              {/* Services */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Services (comma separated)</label>
                 <input
@@ -302,7 +422,6 @@ export default function ArtistsClient() {
                 </p>
               </div>
 
-              {/* Bio */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Bio / Quote</label>
                 <textarea
@@ -313,31 +432,18 @@ export default function ArtistsClient() {
                 />
               </div>
 
-              {/* Mobile Available */}
-              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <input
-                  type="checkbox"
-                  id="mobile_available"
-                  checked={form.mobile_available}
-                  onChange={e => setForm({ ...form, mobile_available: e.target.checked })}
-                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
-                />
-                <label htmlFor="mobile_available" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
-                  Available for Mobile Service (+KES 1,000)
-                </label>
-              </div>
             </div>
 
             <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving}
+                disabled={saving || uploading}
                 style={{
                   background: "#2D2424", border: "none", borderRadius: "2px",
                   padding: "10px 28px", cursor: saving ? "not-allowed" : "pointer",
                   fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "#FDFBF7", fontWeight: 600, opacity: saving ? 0.6 : 1,
+                  color: "#FDFBF7", fontWeight: 600, opacity: saving || uploading ? 0.6 : 1,
                 }}
               >
                 {saving ? "Saving..." : editingArtist?.id ? "Update Artist" : "Save Artist"}
@@ -407,7 +513,11 @@ export default function ArtistsClient() {
                   fontWeight: 600, color: "#fff",
                 }}>
                   {artist.photo_url ? (
-                    <img src={artist.photo_url} alt={artist.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img
+                      src={artist.photo_url}
+                      alt={artist.name}
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
                   ) : (
                     getInitials(artist.name)
                   )}
