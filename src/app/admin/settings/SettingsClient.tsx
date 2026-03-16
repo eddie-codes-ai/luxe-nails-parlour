@@ -218,10 +218,8 @@ export default function SettingsClient() {
                 </button>
               </div>
 
-              {/* Strength bar + requirements */}
               {newPassword && (
                 <div style={{ marginTop: "10px" }}>
-                  {/* Strength bar */}
                   <div style={{ display: "flex", gap: "4px", marginBottom: "6px" }}>
                     {[1, 2, 3, 4].map(level => (
                       <div
@@ -237,8 +235,6 @@ export default function SettingsClient() {
                   <p style={{ fontSize: "11px", color: getStrengthTextColor(newPassword), margin: "0 0 10px" }}>
                     {getStrengthLabel(newPassword)}
                   </p>
-
-                  {/* Requirements checklist */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
                     {requirements.map(req => (
                       <div key={req.label} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
@@ -281,14 +277,10 @@ export default function SettingsClient() {
                 </button>
               </div>
               {confirmPassword && confirmPassword !== newPassword && (
-                <p style={{ fontSize: "11px", color: "#991b1b", marginTop: "4px" }}>
-                  Passwords do not match
-                </p>
+                <p style={{ fontSize: "11px", color: "#991b1b", marginTop: "4px" }}>Passwords do not match</p>
               )}
               {confirmPassword && confirmPassword === newPassword && (
-                <p style={{ fontSize: "11px", color: "#166534", marginTop: "4px" }}>
-                  ✅ Passwords match
-                </p>
+                <p style={{ fontSize: "11px", color: "#166534", marginTop: "4px" }}>✅ Passwords match</p>
               )}
             </div>
 
@@ -310,8 +302,15 @@ export default function SettingsClient() {
           </button>
         </div>
 
+        {/* Updated: was static text, now a functional link */}
         <p style={{ marginTop: "32px", fontSize: "12px", color: "rgba(45,36,36,0.35)", textAlign: "center" }}>
-          Forgot your password? Contact your developer to reset it.
+          Forgot your password?{" "}
+          <a
+            href="/admin/forgot-password"
+            style={{ color: "#C5A358", textDecoration: "underline", cursor: "pointer" }}
+          >
+            Reset it here
+          </a>
         </p>
 
       </div>
@@ -340,8 +339,7 @@ function getStrengthColor(password: string, level: number): string {
 
 function getStrengthTextColor(password: string): string {
   const strength = getPasswordStrength(password);
-  if (strength === 0) return "#ef4444";
-  if (strength === 1) return "#ef4444";
+  if (strength <= 1) return "#ef4444";
   if (strength === 2) return "#f97316";
   if (strength === 3) return "#eab308";
   return "#22c55e";

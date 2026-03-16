@@ -74,7 +74,7 @@ export default function AdminLoginPage() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
-            style={{ width: "100%", padding: "12px 14px", border: "1px solid #E5E0D8", borderRadius: "2px", fontSize: "14px", color: "#2D2424", background: "#fff" }}
+            style={{ width: "100%", padding: "12px 14px", border: "1px solid #E5E0D8", borderRadius: "2px", fontSize: "14px", color: "#2D2424", background: "#fff", boxSizing: "border-box" }}
           />
         </div>
 
@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             onKeyDown={e => e.key === "Enter" && handleLogin()}
-            style={{ width: "100%", padding: "12px 14px", border: "1px solid #E5E0D8", borderRadius: "2px", fontSize: "14px", color: "#2D2424", background: "#fff" }}
+            style={{ width: "100%", padding: "12px 14px", border: "1px solid #E5E0D8", borderRadius: "2px", fontSize: "14px", color: "#2D2424", background: "#fff", boxSizing: "border-box" }}
           />
         </div>
 
@@ -102,6 +102,16 @@ export default function AdminLoginPage() {
         >
           {loading ? "Signing in..." : "Sign In"}
         </button>
+
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
+          <a
+            href="/admin/forgot-password"
+            style={{ fontSize: "13px", color: "rgba(45,36,36,0.45)", textDecoration: "underline", cursor: "pointer" }}
+          >
+            Forgot your password?
+          </a>
+        </div>
+
       </div>
     </div>
   );
