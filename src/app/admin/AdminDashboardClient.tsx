@@ -108,6 +108,13 @@ export default function AdminDashboard() {
       label: "Manage Artists",
       path: "/admin/artists",
     },
+    {
+      emoji: "⚙️",
+      title: "Settings",
+      description: "Update your admin password and manage your account security.",
+      label: "Manage Settings",
+      path: "/admin/settings",
+    },
   ];
 
   return (
@@ -188,8 +195,8 @@ export default function AdminDashboard() {
           What would you like to manage today?
         </p>
 
-        {/* Cards */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px" }}>
+        {/* Cards — 2x2 grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
           {cards.map((card) => (
             <div
               key={card.path}
