@@ -86,7 +86,14 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const cards = [
+ const cards = [
+    {
+      emoji: "📅",
+      title: "Bookings",
+      description: "View, confirm and manage all appointments. See deposits, M-Pesa refs and customer details.",
+      label: "Manage Bookings",
+      path: "/admin/bookings",
+    },
     {
       emoji: "🛍️",
       title: "Shop Products",
