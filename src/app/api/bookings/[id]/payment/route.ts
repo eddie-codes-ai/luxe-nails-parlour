@@ -1,7 +1,4 @@
 // src/app/api/bookings/[id]/payment/route.ts
-// POST /api/bookings/[id]/payment
-// Customer submits their M-Pesa reference after paying deposit
-
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -9,6 +6,25 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .select('id, customer_name, customer_phone, service_price, deposit_amount, booking_date, start_time, status, location_type, is_late_night, services ( name ), artists ( name )')
+    .eq('id', id)
+    .single()
+
+  if (error || !booking) {
+    return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
+  }
+
+  return NextResponse.json({ booking })
+}
 
 export async function POST(
   req: NextRequest,
@@ -29,7 +45,6 @@ export async function POST(
     return NextResponse.json({ error: 'M-Pesa reference is required' }, { status: 400 })
   }
 
-  // Fetch the booking
   const { data: booking, error: fetchError } = await supabase
     .from('bookings')
     .select('id, status, expires_at')
@@ -40,7 +55,6 @@ export async function POST(
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
   }
 
-  // Only pending_payment bookings can submit a ref
   if (booking.status !== 'pending_payment') {
     return NextResponse.json(
       { error: `Cannot submit payment for a booking with status: ${booking.status}` },
@@ -48,21 +62,14 @@ export async function POST(
     )
   }
 
-  // Check if slot has expired
   if (new Date(booking.expires_at) < new Date()) {
-    // Mark as expired
-    await supabase
-      .from('bookings')
-      .update({ status: 'expired' })
-      .eq('id', id)
-
+    await supabase.from('bookings').update({ status: 'expired' }).eq('id', id)
     return NextResponse.json(
       { error: 'Your reserved slot has expired. Please start a new booking.' },
       { status: 410 }
     )
   }
 
-  // Update booking with Mpesa ref and move to payment_submitted
   const { error: updateError } = await supabase
     .from('bookings')
     .update({
