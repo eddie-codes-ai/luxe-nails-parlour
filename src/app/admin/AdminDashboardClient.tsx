@@ -86,13 +86,20 @@ export default function AdminDashboard() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
- const cards = [
+  const cards = [
     {
       emoji: "📅",
       title: "Bookings",
       description: "View, confirm and manage all appointments. See deposits, M-Pesa refs and customer details.",
       label: "Manage Bookings",
       path: "/admin/bookings",
+    },
+    {
+      emoji: "✂️",
+      title: "Services",
+      description: "Add, edit or hide the services offered. Set prices, durations and house call availability.",
+      label: "Manage Services",
+      path: "/admin/services",
     },
     {
       emoji: "🛍️",
@@ -123,19 +130,19 @@ export default function AdminDashboard() {
       path: "/admin/settings",
     },
     {
-  emoji: "💳",
-  title: "Booking Settings",
-  description: "Set deposit %, travel fees, late night surcharge and notification contacts.",
-  label: "Manage Booking Settings",
-  path: "/admin/booking-settings",
- },
- {
-  emoji: "📋",
-  title: "Artist Schedules",
-  description: "Set working hours, day offs and late night windows for each artist.",
-  label: "Manage Schedules",
-  path: "/admin/artist-schedules",
-},
+      emoji: "💳",
+      title: "Booking Settings",
+      description: "Set deposit %, travel fees, late night surcharge and notification contacts.",
+      label: "Manage Booking Settings",
+      path: "/admin/booking-settings",
+    },
+    {
+      emoji: "📋",
+      title: "Artist Schedules",
+      description: "Set working hours, day offs and late night windows for each artist.",
+      label: "Manage Schedules",
+      path: "/admin/artist-schedules",
+    },
   ];
 
   return (

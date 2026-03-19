@@ -1,0 +1,672 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface Service {
+  id?: string;
+  name: string;
+  description: string;
+  base_price: number;
+  duration_minutes: number;
+  category_id: number | null;
+  house_call_available: boolean;
+  is_active: boolean;
+  // joined from categories table (read-only, returned by API)
+  categories?: { name: string };
+}
+
+const emptyService: Service = {
+  name: "",
+  description: "",
+  base_price: 0,
+  duration_minutes: 60,
+  category_id: null,
+  house_call_available: true,
+  is_active: true,
+};
+
+// ─── Style tokens ─────────────────────────────────────────────────────────────
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 14px",
+  fontSize: "13px",
+  border: "1px solid #E5E0D8",
+  borderRadius: "2px",
+  fontFamily: "'Jost', sans-serif",
+  background: "#FDFBF7",
+  color: "#2D2424",
+  outline: "none",
+  boxSizing: "border-box" as const,
+};
+
+const labelStyle = {
+  fontSize: "11px",
+  letterSpacing: "0.1em",
+  textTransform: "uppercase" as const,
+  color: "rgba(45,36,36,0.5)",
+  marginBottom: "6px",
+  display: "block",
+};
+
+const selectStyle = {
+  ...inputStyle,
+  appearance: "none" as const,
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%232D2424' d='M6 8L1 3h10z'/%3E%3C/svg%3E")`,
+  backgroundRepeat: "no-repeat" as const,
+  backgroundPosition: "right 14px center" as const,
+  paddingRight: "36px",
+  cursor: "pointer",
+};
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function formatDuration(minutes: number): string {
+  if (!minutes) return "—";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}min`;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function ServicesClient() {
+  const router = useRouter();
+
+  const [services,      setServices]    = useState<Service[]>([]);
+  const [categories,    setCategories]  = useState<Category[]>([]);
+  const [loading,       setLoading]     = useState(true);
+  const [showForm,      setShowForm]    = useState(false);
+  const [editingService,setEditing]     = useState<Service | null>(null);
+  const [form,          setForm]        = useState<Service>(emptyService);
+  const [saving,        setSaving]      = useState(false);
+  const [deletingId,    setDeletingId]  = useState<string | null>(null);
+  const [togglingId,    setTogglingId]  = useState<string | null>(null);
+  const [error,         setError]       = useState("");
+  const [success,       setSuccess]     = useState("");
+  const [hoverBack,     setHoverBack]   = useState(false);
+  const [filterActive,  setFilterActive]= useState<"all" | "active" | "inactive">("all");
+
+  // ── Fetch ────────────────────────────────────────────────────────────────────
+
+  const fetchServices = async () => {
+    setLoading(true);
+    const res  = await fetch("/api/admin/services");
+    const data = await res.json();
+    setServices(data.services || []);
+    setLoading(false);
+  };
+
+  const fetchCategories = async () => {
+    const res  = await fetch("/api/admin/categories");
+    const data = await res.json();
+    setCategories(data.categories || []);
+  };
+
+  useEffect(() => {
+    fetchServices();
+    fetchCategories();
+  }, []);
+
+  // ── Form helpers ─────────────────────────────────────────────────────────────
+
+  const handleAddNew = () => {
+    setEditing(null);
+    setForm(emptyService);
+    setShowForm(true);
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleEdit = (service: Service) => {
+    setEditing(service);
+    setForm(service);
+    setShowForm(true);
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditing(null);
+    setForm(emptyService);
+    setError("");
+  };
+
+  // ── Save (create or update) ──────────────────────────────────────────────────
+
+  const handleSave = async () => {
+    if (!form.name.trim())                          { setError("Service name is required.");      return; }
+    if (!form.base_price || form.base_price <= 0)   { setError("Please enter a valid price.");    return; }
+    if (!form.duration_minutes || form.duration_minutes <= 0) { setError("Please enter a valid duration."); return; }
+    if (!form.category_id)                          { setError("Please select a category.");      return; }
+
+    setSaving(true);
+    setError("");
+
+    const method = editingService?.id ? "PUT" : "POST";
+    const body   = editingService?.id ? { ...form, id: editingService.id } : form;
+
+    const res  = await fetch("/api/admin/services", {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      setSuccess(editingService?.id ? "Service updated!" : "Service added!");
+      setShowForm(false);
+      setEditing(null);
+      setForm(emptyService);
+      fetchServices();
+      setTimeout(() => setSuccess(""), 3000);
+    } else {
+      setError(data.error || "Something went wrong. Please try again.");
+    }
+    setSaving(false);
+  };
+
+  // ── Delete ───────────────────────────────────────────────────────────────────
+
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(
+      `Delete "${name}"?\n\nExisting bookings will keep their service name, but this service will no longer appear in the booking form.`
+    )) return;
+
+    setDeletingId(id);
+    const res  = await fetch("/api/admin/services", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      setSuccess("Service deleted!");
+      fetchServices();
+      setTimeout(() => setSuccess(""), 3000);
+    } else {
+      setError(data.error || "Failed to delete service.");
+    }
+    setDeletingId(null);
+  };
+
+  // ── Toggle active (quick hide/show without opening the edit form) ─────────────
+
+  const handleToggleActive = async (service: Service) => {
+    if (!service.id) return;
+    setTogglingId(service.id);
+    const res  = await fetch("/api/admin/services", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...service, id: service.id, is_active: !service.is_active }),
+    });
+    const data = await res.json();
+    if (data.success) {
+      fetchServices();
+    } else {
+      setError("Failed to update service status.");
+    }
+    setTogglingId(null);
+  };
+
+  // ── Filtered list ────────────────────────────────────────────────────────────
+
+  const filtered = services.filter(s => {
+    if (filterActive === "active")   return s.is_active;
+    if (filterActive === "inactive") return !s.is_active;
+    return true;
+  });
+
+  const activeCount   = services.filter(s => s.is_active).length;
+  const inactiveCount = services.filter(s => !s.is_active).length;
+
+  // ─── Render ────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#FDFBF7", fontFamily: "'Jost', sans-serif" }}>
+
+      {/* ── Top Bar ── */}
+      <div style={{
+        background: "#2D2424", padding: "0 40px", height: "64px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+          <button
+            type="button"
+            onClick={() => router.push("/admin")}
+            onMouseEnter={() => setHoverBack(true)}
+            onMouseLeave={() => setHoverBack(false)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              color: hoverBack ? "#C5A358" : "rgba(253,251,247,0.5)",
+              fontSize: "20px", transition: "color 0.2s", padding: 0,
+            }}
+          >
+            ←
+          </button>
+          <div>
+            <span style={{ fontFamily: "'Cormorant Garamond', serif", fontSize: "20px", color: "#C5A358" }}>
+              Luxe Nails
+            </span>
+            <span style={{
+              fontSize: "10px", letterSpacing: "0.2em",
+              color: "rgba(253,251,247,0.5)", textTransform: "uppercase", marginLeft: "12px",
+            }}>
+              Services
+            </span>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "12px" }}>
+          {/* Quick link to categories since category_id is a FK */}
+          <button
+            type="button"
+            onClick={() => router.push("/admin/categories")}
+            style={{
+              background: "none", border: "1px solid rgba(197,163,88,0.4)", borderRadius: "2px",
+              padding: "8px 20px", cursor: "pointer", fontSize: "12px",
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              color: "#C5A358", fontWeight: 500,
+            }}
+          >
+            Manage Categories
+          </button>
+          <button
+            type="button"
+            onClick={handleAddNew}
+            style={{
+              background: "#C5A358", border: "none", borderRadius: "2px",
+              padding: "8px 20px", cursor: "pointer", fontSize: "12px",
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              color: "#2D2424", fontWeight: 600,
+            }}
+          >
+            + Add Service
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: "900px", margin: "0 auto", padding: "48px 40px" }}>
+
+        {/* ── Success banner ── */}
+        {success && (
+          <div style={{
+            background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "4px",
+            padding: "12px 16px", marginBottom: "24px", fontSize: "13px", color: "#166534",
+          }}>
+            ✅ {success}
+          </div>
+        )}
+
+        {/* ── Add / Edit Form ── */}
+        {showForm && (
+          <div style={{
+            background: "#fff", border: "1px solid #E5E0D8", borderRadius: "4px",
+            padding: "36px", marginBottom: "40px",
+          }}>
+            <h2 style={{
+              fontFamily: "'Cormorant Garamond', serif", fontSize: "26px",
+              color: "#2D2424", fontWeight: 500, marginBottom: "6px",
+            }}>
+              {editingService?.id ? "Edit Service" : "Add New Service"}
+            </h2>
+            <p style={{ fontSize: "13px", color: "rgba(45,36,36,0.45)", marginBottom: "28px" }}>
+              Services appear in the customer booking form and the admin manual booking panel.
+            </p>
+
+            {error && (
+              <div style={{
+                background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "4px",
+                padding: "12px 16px", marginBottom: "20px", fontSize: "13px", color: "#991b1b",
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+
+              {/* Name — full width */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Service Name *</label>
+                <input
+                  style={inputStyle}
+                  value={form.name}
+                  onChange={e => { setForm({ ...form, name: e.target.value }); setError(""); }}
+                  placeholder="e.g. Classic Gel Manicure"
+                />
+              </div>
+
+              {/* Base price */}
+              <div>
+                <label style={labelStyle}>Base Price (KES) *</label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="0"
+                  value={form.base_price || ""}
+                  onChange={e => { setForm({ ...form, base_price: Number(e.target.value) }); setError(""); }}
+                  placeholder="e.g. 1500"
+                />
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label style={labelStyle}>Duration (minutes) *</label>
+                <input
+                  style={inputStyle}
+                  type="number"
+                  min="15"
+                  step="15"
+                  value={form.duration_minutes || ""}
+                  onChange={e => { setForm({ ...form, duration_minutes: Number(e.target.value) }); setError(""); }}
+                  placeholder="e.g. 60"
+                />
+                {form.duration_minutes > 0 && (
+                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                    = {formatDuration(form.duration_minutes)} · used to block slots in the booking calendar
+                  </p>
+                )}
+              </div>
+
+              {/* Category — FK to categories table */}
+              <div>
+                <label style={labelStyle}>Category *</label>
+                <select
+                  style={selectStyle}
+                  value={form.category_id ?? ""}
+                  onChange={e => {
+                    setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null });
+                    setError("");
+                  }}
+                >
+                  <option value="">Select a category...</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                  Need a new category?{" "}
+                  <span
+                    onClick={() => router.push("/admin/categories")}
+                    style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Manage categories
+                  </span>
+                </p>
+              </div>
+
+              {/* Toggles */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "14px", justifyContent: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <input
+                    type="checkbox"
+                    id="is_active"
+                    checked={form.is_active}
+                    onChange={e => setForm({ ...form, is_active: e.target.checked })}
+                    style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#C5A358" }}
+                  />
+                  <label htmlFor="is_active" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
+                    Active (visible in booking form)
+                  </label>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <input
+                    type="checkbox"
+                    id="house_call_available"
+                    checked={form.house_call_available}
+                    onChange={e => setForm({ ...form, house_call_available: e.target.checked })}
+                    style={{ width: "16px", height: "16px", cursor: "pointer", accentColor: "#C5A358" }}
+                  />
+                  <label htmlFor="house_call_available" style={{ ...labelStyle, margin: 0, cursor: "pointer" }}>
+                    Available for house calls 🚗
+                  </label>
+                </div>
+              </div>
+
+              {/* Description — full width */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Description</label>
+                <textarea
+                  style={{ ...inputStyle, height: "80px", resize: "vertical" }}
+                  value={form.description}
+                  onChange={e => setForm({ ...form, description: e.target.value })}
+                  placeholder="Brief description shown to customers during booking..."
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  background: "#2D2424", border: "none", borderRadius: "2px",
+                  padding: "10px 28px", cursor: saving ? "not-allowed" : "pointer",
+                  fontSize: "12px", letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: "#FDFBF7", fontWeight: 600, opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Saving..." : editingService?.id ? "Update Service" : "Save Service"}
+              </button>
+              <button
+                type="button"
+                onClick={handleCancel}
+                style={{
+                  background: "none", border: "1px solid #E5E0D8", borderRadius: "2px",
+                  padding: "10px 28px", cursor: "pointer", fontSize: "12px",
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: "rgba(45,36,36,0.5)",
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Filter tabs + heading ── */}
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between", marginBottom: "24px",
+        }}>
+          <h2 style={{
+            fontFamily: "'Cormorant Garamond', serif", fontSize: "30px",
+            color: "#2D2424", fontWeight: 300, margin: 0,
+          }}>
+            All Services ({services.length})
+          </h2>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {([
+              { key: "all",      label: `All (${services.length})` },
+              { key: "active",   label: `Active (${activeCount})` },
+              { key: "inactive", label: `Inactive (${inactiveCount})` },
+            ] as const).map(f => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => setFilterActive(f.key)}
+                style={{
+                  padding: "6px 14px", borderRadius: "20px", fontSize: "12px",
+                  cursor: "pointer", fontFamily: "'Jost', sans-serif",
+                  fontWeight: filterActive === f.key ? 600 : 400,
+                  background: filterActive === f.key ? "#2D2424" : "#fff",
+                  color: filterActive === f.key ? "#FDFBF7" : "rgba(45,36,36,0.5)",
+                  border: `1px solid ${filterActive === f.key ? "#2D2424" : "#E5E0D8"}`,
+                  transition: "all 0.15s",
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Services list ── */}
+        {loading ? (
+          <p style={{ color: "rgba(45,36,36,0.4)", fontSize: "14px" }}>Loading services...</p>
+        ) : filtered.length === 0 ? (
+          <div style={{
+            background: "#fff", border: "1px solid #E5E0D8", borderRadius: "4px",
+            padding: "60px", textAlign: "center",
+          }}>
+            <p style={{ fontSize: "14px", color: "rgba(45,36,36,0.4)", marginBottom: "20px" }}>
+              {services.length === 0
+                ? "No services yet. Add your first service!"
+                : "No services match this filter."}
+            </p>
+            {services.length === 0 && (
+              <button
+                type="button"
+                onClick={handleAddNew}
+                style={{
+                  background: "#C5A358", border: "none", borderRadius: "2px",
+                  padding: "10px 24px", cursor: "pointer", fontSize: "12px",
+                  letterSpacing: "0.1em", textTransform: "uppercase",
+                  color: "#2D2424", fontWeight: 600,
+                }}
+              >
+                + Add Service
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {filtered.map(service => (
+              <div
+                key={service.id}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #E5E0D8",
+                  borderLeft: `3px solid ${service.is_active ? "#C5A358" : "#E5E0D8"}`,
+                  borderRadius: "4px",
+                  padding: "20px 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "20px",
+                  opacity: service.is_active ? 1 : 0.65,
+                  transition: "opacity 0.2s",
+                }}
+              >
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    marginBottom: "5px", flexWrap: "wrap",
+                  }}>
+                    <span style={{ fontSize: "15px", fontWeight: 600, color: "#2D2424" }}>
+                      {service.name}
+                    </span>
+                    <span style={{
+                      fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
+                      background: service.is_active ? "#f0fdf4" : "#fef2f2",
+                      color: service.is_active ? "#166534" : "#991b1b",
+                      border: `1px solid ${service.is_active ? "#bbf7d0" : "#fecaca"}`,
+                    }}>
+                      {service.is_active ? "Active" : "Inactive"}
+                    </span>
+                    {service.categories?.name && (
+                      <span style={{
+                        fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
+                        background: "#FDF8EE", color: "#8A6F2E", border: "1px solid #E8D9B0",
+                      }}>
+                        {service.categories.name}
+                      </span>
+                    )}
+                    {service.house_call_available && (
+                      <span style={{
+                        fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
+                        background: "#EFF7FF", color: "#2563A8", border: "1px solid #BFDBFE",
+                      }}>
+                        🚗 House calls
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "rgba(45,36,36,0.5)" }}>
+                    KES {Number(service.base_price).toLocaleString()}
+                    <span style={{ margin: "0 6px", opacity: 0.3 }}>·</span>
+                    {formatDuration(service.duration_minutes)}
+                  </div>
+                  {service.description && (
+                    <div style={{
+                      fontSize: "12px", color: "rgba(45,36,36,0.4)", marginTop: "4px",
+                      whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                      maxWidth: "520px",
+                    }}>
+                      {service.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(service)}
+                    disabled={togglingId === service.id}
+                    title={service.is_active ? "Hide from booking form" : "Show in booking form"}
+                    style={{
+                      background: "none",
+                      border: `1px solid ${service.is_active ? "#E5E0D8" : "#bbf7d0"}`,
+                      borderRadius: "2px", padding: "6px 14px", cursor: "pointer",
+                      fontSize: "11px", letterSpacing: "0.1em", textTransform: "uppercase",
+                      color: service.is_active ? "rgba(45,36,36,0.4)" : "#166534",
+                      opacity: togglingId === service.id ? 0.5 : 1,
+                    }}
+                  >
+                    {togglingId === service.id ? "..." : service.is_active ? "Hide" : "Show"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(service)}
+                    style={{
+                      background: "none", border: "1px solid #E5E0D8", borderRadius: "2px",
+                      padding: "6px 16px", cursor: "pointer", fontSize: "11px",
+                      letterSpacing: "0.1em", textTransform: "uppercase", color: "#2D2424",
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(service.id!, service.name)}
+                    disabled={deletingId === service.id}
+                    style={{
+                      background: "none", border: "1px solid #fecaca", borderRadius: "2px",
+                      padding: "6px 16px", cursor: "pointer", fontSize: "11px",
+                      letterSpacing: "0.1em", textTransform: "uppercase", color: "#991b1b",
+                      opacity: deletingId === service.id ? 0.5 : 1,
+                    }}
+                  >
+                    {deletingId === service.id ? "..." : "Delete"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {services.length > 0 && (
+          <p style={{
+            fontSize: "11px", color: "rgba(45,36,36,0.3)",
+            textAlign: "center", marginTop: "32px",
+          }}>
+            Only <strong>Active</strong> services appear in the customer booking form.
+            Use <strong>Hide / Show</strong> to toggle without deleting.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
