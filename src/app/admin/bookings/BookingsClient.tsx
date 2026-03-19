@@ -392,11 +392,18 @@ export default function BookingsClient() {
               Manage all appointments from here.
             </p>
           </div>
-          <button
-            onClick={fetchBookings}
-            style={{ background: 'transparent', border: `1px solid ${c.border}`, color: c.muted, padding: '8px 16px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: fonts.body, borderRadius: 2 }}>
-            ↻ Refresh
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => router.push('/admin/bookings/new')}
+              style={{ background: c.gold, color: '#fff', border: 'none', padding: '8px 18px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: fonts.body, borderRadius: 2 }}>
+              + New Booking
+            </button>
+            <button
+              onClick={fetchBookings}
+              style={{ background: 'transparent', border: `1px solid ${c.border}`, color: c.muted, padding: '8px 16px', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer', fontFamily: fonts.body, borderRadius: 2 }}>
+              ↻ Refresh
+            </button>
+          </div>
         </div>
 
         {/* ── Search ── */}
