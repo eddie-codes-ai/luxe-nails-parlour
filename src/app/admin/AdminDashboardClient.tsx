@@ -122,6 +122,13 @@ export default function AdminDashboard() {
       label: "Manage Settings",
       path: "/admin/settings",
     },
+    {
+  emoji: "💳",
+  title: "Booking Settings",
+  description: "Set deposit %, travel fees, late night surcharge and notification contacts.",
+  label: "Manage Booking Settings",
+  path: "/admin/booking-settings",
+ },
   ];
 
   return (
