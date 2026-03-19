@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface Category {
+interface ServiceCategory {
   id: number;
   name: string;
 }
@@ -16,11 +16,9 @@ interface Service {
   description: string;
   base_price: number;
   duration_minutes: number;
-  category_id: number | null;
+  category: string;
   house_call_available: boolean;
   is_active: boolean;
-  // joined from categories table (read-only, returned by API)
-  categories?: { name: string };
 }
 
 const emptyService: Service = {
@@ -28,7 +26,7 @@ const emptyService: Service = {
   description: "",
   base_price: 0,
   duration_minutes: 60,
-  category_id: null,
+  category: "",
   house_call_available: true,
   is_active: true,
 };
@@ -83,19 +81,19 @@ function formatDuration(minutes: number): string {
 export default function ServicesClient() {
   const router = useRouter();
 
-  const [services,      setServices]    = useState<Service[]>([]);
-  const [categories,    setCategories]  = useState<Category[]>([]);
-  const [loading,       setLoading]     = useState(true);
-  const [showForm,      setShowForm]    = useState(false);
-  const [editingService,setEditing]     = useState<Service | null>(null);
-  const [form,          setForm]        = useState<Service>(emptyService);
-  const [saving,        setSaving]      = useState(false);
-  const [deletingId,    setDeletingId]  = useState<string | null>(null);
-  const [togglingId,    setTogglingId]  = useState<string | null>(null);
-  const [error,         setError]       = useState("");
-  const [success,       setSuccess]     = useState("");
-  const [hoverBack,     setHoverBack]   = useState(false);
-  const [filterActive,  setFilterActive]= useState<"all" | "active" | "inactive">("all");
+  const [services,       setServices]    = useState<Service[]>([]);
+  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [loading,        setLoading]     = useState(true);
+  const [showForm,       setShowForm]    = useState(false);
+  const [editingService, setEditing]     = useState<Service | null>(null);
+  const [form,           setForm]        = useState<Service>(emptyService);
+  const [saving,         setSaving]      = useState(false);
+  const [deletingId,     setDeletingId]  = useState<string | null>(null);
+  const [togglingId,     setTogglingId]  = useState<string | null>(null);
+  const [error,          setError]       = useState("");
+  const [success,        setSuccess]     = useState("");
+  const [hoverBack,      setHoverBack]   = useState(false);
+  const [filterActive,   setFilterActive]= useState<"all" | "active" | "inactive">("all");
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -107,15 +105,15 @@ export default function ServicesClient() {
     setLoading(false);
   };
 
-  const fetchCategories = async () => {
-    const res  = await fetch("/api/admin/categories");
+  const fetchServiceCategories = async () => {
+    const res  = await fetch("/api/admin/service-categories");
     const data = await res.json();
-    setCategories(data.categories || []);
+    setServiceCategories(data.categories || []);
   };
 
   useEffect(() => {
     fetchServices();
-    fetchCategories();
+    fetchServiceCategories();
   }, []);
 
   // ── Form helpers ─────────────────────────────────────────────────────────────
@@ -130,7 +128,12 @@ export default function ServicesClient() {
 
   const handleEdit = (service: Service) => {
     setEditing(service);
-    setForm(service);
+    setForm({
+      ...service,
+      base_price:       Number(service.base_price),
+      duration_minutes: Number(service.duration_minutes),
+      category:         service.category ?? "",
+    });
     setShowForm(true);
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -143,13 +146,13 @@ export default function ServicesClient() {
     setError("");
   };
 
-  // ── Save (create or update) ──────────────────────────────────────────────────
+  // ── Save ─────────────────────────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!form.name.trim())                          { setError("Service name is required.");      return; }
-    if (!form.base_price || form.base_price <= 0)   { setError("Please enter a valid price.");    return; }
+    if (!form.name.trim())                                    { setError("Service name is required.");      return; }
+    if (!form.base_price || form.base_price <= 0)             { setError("Please enter a valid price.");    return; }
     if (!form.duration_minutes || form.duration_minutes <= 0) { setError("Please enter a valid duration."); return; }
-    if (!form.category_id)                          { setError("Please select a category.");      return; }
+    if (!form.category)                                       { setError("Please select a category.");      return; }
 
     setSaving(true);
     setError("");
@@ -183,7 +186,6 @@ export default function ServicesClient() {
     if (!confirm(
       `Delete "${name}"?\n\nExisting bookings will keep their service name, but this service will no longer appear in the booking form.`
     )) return;
-
     setDeletingId(id);
     const res  = await fetch("/api/admin/services", {
       method: "DELETE",
@@ -201,7 +203,7 @@ export default function ServicesClient() {
     setDeletingId(null);
   };
 
-  // ── Toggle active (quick hide/show without opening the edit form) ─────────────
+  // ── Toggle active ─────────────────────────────────────────────────────────────
 
   const handleToggleActive = async (service: Service) => {
     if (!service.id) return;
@@ -269,10 +271,10 @@ export default function ServicesClient() {
         </div>
 
         <div style={{ display: "flex", gap: "12px" }}>
-          {/* Quick link to categories since category_id is a FK */}
+          {/* Links to the dedicated service categories manager */}
           <button
             type="button"
-            onClick={() => router.push("/admin/categories")}
+            onClick={() => router.push("/admin/service-categories")}
             style={{
               background: "none", border: "1px solid rgba(197,163,88,0.4)", borderRadius: "2px",
               padding: "8px 20px", cursor: "pointer", fontSize: "12px",
@@ -336,7 +338,7 @@ export default function ServicesClient() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
 
-              {/* Name — full width */}
+              {/* Name */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Service Name *</label>
                 <input
@@ -379,31 +381,41 @@ export default function ServicesClient() {
                 )}
               </div>
 
-              {/* Category — FK to categories table */}
+              {/* Category — dynamic from service_categories table */}
               <div>
                 <label style={labelStyle}>Category *</label>
                 <select
                   style={selectStyle}
-                  value={form.category_id ?? ""}
-                  onChange={e => {
-                    setForm({ ...form, category_id: e.target.value ? Number(e.target.value) : null });
-                    setError("");
-                  }}
+                  value={form.category}
+                  onChange={e => { setForm({ ...form, category: e.target.value }); setError(""); }}
                 >
                   <option value="">Select a category...</option>
-                  {categories.map(cat => (
-                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  {serviceCategories.map(cat => (
+                    <option key={cat.id} value={cat.name}>{cat.name}</option>
                   ))}
                 </select>
-                <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
-                  Need a new category?{" "}
-                  <span
-                    onClick={() => router.push("/admin/categories")}
-                    style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
-                  >
-                    Manage categories
-                  </span>
-                </p>
+                {serviceCategories.length === 0 && (
+                  <p style={{ fontSize: "11px", color: "#991b1b", marginTop: "5px" }}>
+                    No categories yet.{" "}
+                    <span
+                      onClick={() => router.push("/admin/service-categories")}
+                      style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Add some first
+                    </span>
+                  </p>
+                )}
+                {serviceCategories.length > 0 && (
+                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
+                    Need a new category?{" "}
+                    <span
+                      onClick={() => router.push("/admin/service-categories")}
+                      style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
+                    >
+                      Manage service categories
+                    </span>
+                  </p>
+                )}
               </div>
 
               {/* Toggles */}
@@ -434,7 +446,7 @@ export default function ServicesClient() {
                 </div>
               </div>
 
-              {/* Description — full width */}
+              {/* Description */}
               <div style={{ gridColumn: "1 / -1" }}>
                 <label style={labelStyle}>Description</label>
                 <textarea
@@ -466,8 +478,7 @@ export default function ServicesClient() {
                 style={{
                   background: "none", border: "1px solid #E5E0D8", borderRadius: "2px",
                   padding: "10px 28px", cursor: "pointer", fontSize: "12px",
-                  letterSpacing: "0.1em", textTransform: "uppercase",
-                  color: "rgba(45,36,36,0.5)",
+                  letterSpacing: "0.1em", textTransform: "uppercase", color: "rgba(45,36,36,0.5)",
                 }}
               >
                 Cancel
@@ -477,10 +488,7 @@ export default function ServicesClient() {
         )}
 
         {/* ── Filter tabs + heading ── */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          justifyContent: "space-between", marginBottom: "24px",
-        }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
           <h2 style={{
             fontFamily: "'Cormorant Garamond', serif", fontSize: "30px",
             color: "#2D2424", fontWeight: 300, margin: 0,
@@ -522,9 +530,7 @@ export default function ServicesClient() {
             padding: "60px", textAlign: "center",
           }}>
             <p style={{ fontSize: "14px", color: "rgba(45,36,36,0.4)", marginBottom: "20px" }}>
-              {services.length === 0
-                ? "No services yet. Add your first service!"
-                : "No services match this filter."}
+              {services.length === 0 ? "No services yet. Add your first service!" : "No services match this filter."}
             </p>
             {services.length === 0 && (
               <button
@@ -559,12 +565,8 @@ export default function ServicesClient() {
                   transition: "opacity 0.2s",
                 }}
               >
-                {/* Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    display: "flex", alignItems: "center", gap: "8px",
-                    marginBottom: "5px", flexWrap: "wrap",
-                  }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "5px", flexWrap: "wrap" }}>
                     <span style={{ fontSize: "15px", fontWeight: 600, color: "#2D2424" }}>
                       {service.name}
                     </span>
@@ -576,12 +578,12 @@ export default function ServicesClient() {
                     }}>
                       {service.is_active ? "Active" : "Inactive"}
                     </span>
-                    {service.categories?.name && (
+                    {service.category && (
                       <span style={{
                         fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
                         background: "#FDF8EE", color: "#8A6F2E", border: "1px solid #E8D9B0",
                       }}>
-                        {service.categories.name}
+                        {service.category}
                       </span>
                     )}
                     {service.house_call_available && (
@@ -609,7 +611,6 @@ export default function ServicesClient() {
                   )}
                 </div>
 
-                {/* Actions */}
                 <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
                   <button
                     type="button"
@@ -658,10 +659,7 @@ export default function ServicesClient() {
         )}
 
         {services.length > 0 && (
-          <p style={{
-            fontSize: "11px", color: "rgba(45,36,36,0.3)",
-            textAlign: "center", marginTop: "32px",
-          }}>
+          <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.3)", textAlign: "center", marginTop: "32px" }}>
             Only <strong>Active</strong> services appear in the customer booking form.
             Use <strong>Hide / Show</strong> to toggle without deleting.
           </p>

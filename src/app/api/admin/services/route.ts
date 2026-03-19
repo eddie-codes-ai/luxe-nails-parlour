@@ -6,14 +6,14 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ─── GET — list all services (with category name joined) ──────────────────────
+// ─── GET — list all services ──────────────────────────────────────────────────
 
 export async function GET() {
   const { data, error } = await supabase
     .from("services")
-    .select("*, categories(name)")
-    .order("category_id", { ascending: true })
-    .order("name",        { ascending: true });
+    .select("id, name, description, base_price, duration_minutes, category, house_call_available, is_active, created_at")
+    .order("category", { ascending: true })
+    .order("name",     { ascending: true });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,19 +26,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const {
-    name,
-    description,
-    base_price,
-    duration_minutes,
-    category_id,
-    house_call_available,
-    is_active,
-  } = body;
+  const { name, description, base_price, duration_minutes, category, house_call_available, is_active } = body;
 
-  if (!name?.trim() || !base_price || !duration_minutes || !category_id) {
+  if (!name?.trim() || !base_price || !duration_minutes || !category?.trim()) {
     return NextResponse.json(
-      { error: "name, base_price, duration_minutes and category_id are required." },
+      { error: "name, base_price, duration_minutes and category are required." },
       { status: 400 }
     );
   }
@@ -48,9 +40,9 @@ export async function POST(req: NextRequest) {
     description:          description?.trim() ?? "",
     base_price:           Number(base_price),
     duration_minutes:     Number(duration_minutes),
-    category_id:          Number(category_id),
-    house_call_available: house_call_available !== false,  // default true
-    is_active:            is_active !== false,             // default true
+    category:             category.trim(),
+    house_call_available: house_call_available !== false,
+    is_active:            is_active !== false,
   }]);
 
   if (error) {
@@ -64,16 +56,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const {
-    id,
-    name,
-    description,
-    base_price,
-    duration_minutes,
-    category_id,
-    house_call_available,
-    is_active,
-  } = body;
+  const { id, name, description, base_price, duration_minutes, category, house_call_available, is_active } = body;
 
   if (!id) {
     return NextResponse.json({ error: "id is required." }, { status: 400 });
@@ -86,7 +69,7 @@ export async function PUT(req: NextRequest) {
       description:          description?.trim() ?? "",
       base_price:           Number(base_price),
       duration_minutes:     Number(duration_minutes),
-      category_id:          Number(category_id),
+      category:             category?.trim(),
       house_call_available: Boolean(house_call_available),
       is_active:            Boolean(is_active),
       updated_at:           new Date().toISOString(),
