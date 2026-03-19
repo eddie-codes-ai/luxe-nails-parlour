@@ -129,6 +129,13 @@ export default function AdminDashboard() {
   label: "Manage Booking Settings",
   path: "/admin/booking-settings",
  },
+ {
+  emoji: "📋",
+  title: "Artist Schedules",
+  description: "Set working hours, day offs and late night windows for each artist.",
+  label: "Manage Schedules",
+  path: "/admin/artist-schedules",
+},
   ];
 
   return (
