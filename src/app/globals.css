@@ -2,10 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+
 :root {
   --font-heading: 'Cormorant Garamond', serif;
   --font-body: 'Jost', sans-serif;
 }
+
 
 * {
   box-sizing: border-box;
@@ -13,9 +15,11 @@
   padding: 0;
 }
 
+
 html {
   scroll-behavior: smooth;
 }
+
 
 body {
   font-family: var(--font-body);
@@ -25,21 +29,28 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+
 /* Text selection colour — gold highlight */
 ::selection {
   background-color: #C5A358;
   color: #FDFBF7;
 }
 
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
+
 ::-webkit-scrollbar-track {
   background: #FDFBF7;
 }
 
+
 ::-webkit-scrollbar-thumb {
   background: #C5A358;
 }
+
+
+
