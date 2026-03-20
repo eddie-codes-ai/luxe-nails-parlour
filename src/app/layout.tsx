@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 
 // ─── Site-wide defaults (overridden per page) ─────────────────────────────────
 
@@ -9,6 +10,7 @@ const TAGLINE = "Where elegance meets nail art";
 const DESCRIPTION =
   "Luxe Nails Parlour — premium nail care on Thika Road, Juja. Manicures, pedicures, gel, acrylics, nail art and house calls across Nairobi. Book your appointment today.";
 const OG_IMAGE = `${SITE_URL}/og-image.png`;
+const GA_ID = "G-HY0NP5K4PM";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -84,6 +86,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
+        {/* Google Analytics 4 */}
+        <script async src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('config', '${GA_ID}', { page_path: window.location.pathname });
+            `,
+          }}
+        />
+        {/* Local business structured data */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
@@ -91,7 +106,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Vercel Analytics */}
+        <Analytics />
+      </body>
     </html>
   );
 }
