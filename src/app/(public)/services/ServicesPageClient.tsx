@@ -13,6 +13,9 @@ interface AddOn {
 interface Service {
   id: string;
   name: string;
+  tagline: string;
+  tag: string | null;
+  tag_color: string | null;
   description: string;
   base_price: number;
   duration_minutes: number;
@@ -166,8 +169,12 @@ export default function ServicesPageClient({ services }: Props) {
                   const isOpen    = openService === service.id;
                   const isHovered = hoveredCard === service.id;
                   const hasDetails =
-                    (service.includes && service.includes.length > 0) ||
-                    (service.add_ons && service.add_ons.length > 0);
+                    (Array.isArray(service.includes) && service.includes.length > 0) ||
+                    (Array.isArray(service.add_ons)  && service.add_ons.length  > 0);
+
+                  // Tag text colour — light text on dark bg, dark text on light bg
+                  const tagTextColor =
+                    service.tag_color === colors.espresso ? colors.cream : colors.espresso;
 
                   return (
                     <article
@@ -185,7 +192,27 @@ export default function ServicesPageClient({ services }: Props) {
                         overflow: "hidden",
                       }}
                     >
-                      {/* Card body */}
+                      {/* ── Tag badge (e.g. "Most Popular") ── */}
+                      {service.tag && (
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: 0,
+                            right: 0,
+                            backgroundColor: service.tag_color || colors.gold,
+                            color: tagTextColor,
+                            fontSize: "0.65rem",
+                            fontWeight: 700,
+                            letterSpacing: "0.15em",
+                            textTransform: "uppercase",
+                            padding: "6px 14px",
+                          }}
+                        >
+                          {service.tag}
+                        </div>
+                      )}
+
+                      {/* ── Card Header ── */}
                       <div style={{ padding: "32px 28px 20px" }}>
 
                         {/* Duration + mobile badge */}
@@ -214,9 +241,21 @@ export default function ServicesPageClient({ services }: Props) {
                           {service.name}
                         </h3>
 
+                        {/* Tagline */}
+                        {service.tagline && (
+                          <p style={{
+                            fontSize: "0.85rem",
+                            opacity: 0.6,
+                            margin: "0 0 20px",
+                            fontStyle: "italic",
+                          }}>
+                            {service.tagline}
+                          </p>
+                        )}
+
                         {/* Description */}
                         {service.description && (
-                          <p style={{ fontSize: "0.92rem", lineHeight: 1.7, opacity: 0.8, margin: "0 0 20px", fontStyle: "italic", color: colors.espresso }}>
+                          <p style={{ fontSize: "0.92rem", lineHeight: 1.7, opacity: 0.8, margin: "0 0 20px" }}>
                             {service.description}
                           </p>
                         )}
@@ -238,7 +277,7 @@ export default function ServicesPageClient({ services }: Props) {
                           <span style={{ fontSize: "0.75rem", opacity: 0.55 }}>KES</span>
                         </div>
 
-                        {/* Toggle button — only show if there are details to expand */}
+                        {/* Toggle button — only shown when includes or add-ons exist */}
                         {hasDetails && (
                           <button
                             onClick={() => toggle(service.id)}
@@ -272,7 +311,7 @@ export default function ServicesPageClient({ services }: Props) {
                           }}
                         >
                           {/* What's Included */}
-                          {service.includes && service.includes.length > 0 && (
+                          {Array.isArray(service.includes) && service.includes.length > 0 && (
                             <>
                               <p style={{
                                 fontSize: "0.7rem",
@@ -306,7 +345,7 @@ export default function ServicesPageClient({ services }: Props) {
                           )}
 
                           {/* Optional Add-ons */}
-                          {service.add_ons && service.add_ons.length > 0 && (
+                          {Array.isArray(service.add_ons) && service.add_ons.length > 0 && (
                             <>
                               <p style={{
                                 fontSize: "0.7rem",

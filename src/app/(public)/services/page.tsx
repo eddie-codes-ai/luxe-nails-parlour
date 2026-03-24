@@ -35,7 +35,7 @@ async function getActiveServices() {
 
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, base_price, duration_minutes, category, house_call_available, includes, add_ons")
+    .select("id, name, tagline, tag, tag_color, description, base_price, duration_minutes, category, house_call_available, includes, add_ons")
     .eq("is_active", true)
     .order("category")
     .order("base_price");

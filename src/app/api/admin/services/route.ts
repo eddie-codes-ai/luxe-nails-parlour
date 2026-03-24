@@ -11,7 +11,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, base_price, duration_minutes, category, house_call_available, is_active, includes, add_ons, created_at")
+    .select("id, name, tagline, tag, tag_color, description, base_price, duration_minutes, category, house_call_available, is_active, includes, add_ons, created_at")
     .order("category", { ascending: true })
     .order("name",     { ascending: true });
 
@@ -27,15 +27,10 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const {
-    name,
-    description,
-    base_price,
-    duration_minutes,
-    category,
-    house_call_available,
-    is_active,
-    includes,
-    add_ons,
+    name, tagline, tag, tag_color,
+    description, base_price, duration_minutes,
+    category, house_call_available, is_active,
+    includes, add_ons,
   } = body;
 
   if (!name?.trim() || !base_price || !duration_minutes || !category?.trim()) {
@@ -47,6 +42,9 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabase.from("services").insert([{
     name:                 name.trim(),
+    tagline:              tagline?.trim()   ?? "",
+    tag:                  tag?.trim()       || null,
+    tag_color:            tag?.trim() ? (tag_color ?? "#C5A358") : null,
     description:          description?.trim() ?? "",
     base_price:           Number(base_price),
     duration_minutes:     Number(duration_minutes),
@@ -69,16 +67,10 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   const body = await req.json();
   const {
-    id,
-    name,
-    description,
-    base_price,
-    duration_minutes,
-    category,
-    house_call_available,
-    is_active,
-    includes,
-    add_ons,
+    id, name, tagline, tag, tag_color,
+    description, base_price, duration_minutes,
+    category, house_call_available, is_active,
+    includes, add_ons,
   } = body;
 
   if (!id) {
@@ -89,6 +81,9 @@ export async function PUT(req: NextRequest) {
     .from("services")
     .update({
       name:                 name?.trim(),
+      tagline:              tagline?.trim()   ?? "",
+      tag:                  tag?.trim()       || null,
+      tag_color:            tag?.trim() ? (tag_color ?? "#C5A358") : null,
       description:          description?.trim() ?? "",
       base_price:           Number(base_price),
       duration_minutes:     Number(duration_minutes),
