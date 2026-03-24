@@ -13,7 +13,26 @@ export const metadata: Metadata = {
   robots: { index: false },
 }
 
-async function getBooking(id: string) {
+interface BookingRow {
+  id: string
+  customer_name: string
+  customer_phone: string
+  booking_date: string
+  start_time: string
+  location_type: 'in_shop' | 'house_call'
+  house_call_address: string | null
+  service_price: number
+  travel_fee: number
+  late_night_surcharge: number
+  deposit_amount: number
+  is_late_night: boolean
+  status: string
+  deposit_mpesa_ref: string | null
+  services: { name: string } | null
+  artists: { name: string } | null
+}
+
+async function getBooking(id: string): Promise<BookingRow | null> {
   const { data, error } = await supabase
     .from('bookings')
     .select(`
@@ -38,7 +57,12 @@ async function getBooking(id: string) {
     .single()
 
   if (error || !data) return null
-  return data
+
+  return {
+    ...data,
+    services: Array.isArray(data.services) ? (data.services[0] ?? null) : data.services,
+    artists:  Array.isArray(data.artists)  ? (data.artists[0]  ?? null) : data.artists,
+  } as BookingRow
 }
 
 export default async function PayPage({
