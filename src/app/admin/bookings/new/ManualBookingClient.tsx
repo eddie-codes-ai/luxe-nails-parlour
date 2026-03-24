@@ -56,32 +56,43 @@ const labelStyle: React.CSSProperties = {
   fontFamily: fonts.body, fontWeight: 500, marginBottom: 6,
 }
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://luxe-nails-parlour.vercel.app'
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ManualBookingClient() {
   const router = useRouter()
 
   const [services, setServices] = useState<Service[]>([])
-  const [artists, setArtists] = useState<Artist[]>([])
-  const [slots, setSlots] = useState<TimeSlot[]>([])
+  const [artists, setArtists]   = useState<Artist[]>([])
+  const [slots, setSlots]       = useState<TimeSlot[]>([])
   const [slotsLoading, setSlotsLoading] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState('')
-  const [error, setError] = useState('')
+  const [submitting, setSubmitting]     = useState(false)
+  const [error, setError]               = useState('')
+
+  // ── Success state ────────────────────────────────────────────────────────────
+  const [createdBooking, setCreatedBooking] = useState<{
+    id: string
+    customerName: string
+    customerPhone: string
+    depositAmount: number
+    sendPaymentLink: boolean
+  } | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const [form, setForm] = useState({
-    customer_name:        '',
-    customer_phone:       '',
-    customer_email:       '',
-    service_id:           '',
-    artist_id:            null as number | null,
-    booking_date:         '',
-    start_time:           '',
-    location_type:        'in_shop' as 'in_shop' | 'house_call',
-    house_call_address:   '',
-    booking_source:       'whatsapp' as 'whatsapp' | 'call' | 'walk_in',
-    deposit_collection:   'collected_offline' as 'collected_offline' | 'payment_link',
-    admin_notes:          '',
+    customer_name:       '',
+    customer_phone:      '',
+    customer_email:      '',
+    service_id:          '',
+    artist_id:           null as number | null,
+    booking_date:        '',
+    start_time:          '',
+    location_type:       'in_shop' as 'in_shop' | 'house_call',
+    house_call_address:  '',
+    booking_source:      'whatsapp' as 'whatsapp' | 'call' | 'walk_in',
+    deposit_collection:  'collected_offline' as 'collected_offline' | 'payment_link',
+    admin_notes:         '',
   })
 
   const today = new Date().toISOString().split('T')[0]
@@ -111,18 +122,17 @@ export default function ManualBookingClient() {
     setError('')
   }
 
-  // ── Deposit calculation ──────────────────────────────────────────────────────
   const depositEstimate = selectedService
     ? Math.round(selectedService.base_price * 0.3)
     : 0
 
   // ── Submit ───────────────────────────────────────────────────────────────────
   async function handleSubmit() {
-    if (!form.customer_name.trim()) { setError('Customer name is required'); return }
+    if (!form.customer_name.trim())  { setError('Customer name is required'); return }
     if (!form.customer_phone.trim()) { setError('Customer phone is required'); return }
-    if (!form.service_id) { setError('Please select a service'); return }
-    if (!form.booking_date) { setError('Please select a date'); return }
-    if (!form.start_time) { setError('Please select a time slot'); return }
+    if (!form.service_id)            { setError('Please select a service'); return }
+    if (!form.booking_date)          { setError('Please select a date'); return }
+    if (!form.start_time)            { setError('Please select a time slot'); return }
     if (form.location_type === 'house_call' && !form.house_call_address.trim()) {
       setError('Please enter the customer address'); return
     }
@@ -138,8 +148,14 @@ export default function ManualBookingClient() {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to create booking'); return }
-      setSuccess(`Booking created for ${form.customer_name}!`)
-      setTimeout(() => router.push('/admin/bookings'), 2000)
+
+      setCreatedBooking({
+        id:              data.booking.id,
+        customerName:    form.customer_name,
+        customerPhone:   form.customer_phone,
+        depositAmount:   data.deposit_amount,
+        sendPaymentLink: form.deposit_collection === 'payment_link',
+      })
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
@@ -147,6 +163,119 @@ export default function ManualBookingClient() {
     }
   }
 
+  // ── Copy link ────────────────────────────────────────────────────────────────
+  function copyLink() {
+    if (!createdBooking) return
+    const url = `${SITE_URL}/pay/${createdBooking.id}`
+    navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2500)
+    })
+  }
+
+  // ── Open WhatsApp directly with pre-filled message ───────────────────────────
+  function openWhatsApp() {
+    if (!createdBooking) return
+    const url  = `${SITE_URL}/pay/${createdBooking.id}`
+    const msg  = `Hi ${createdBooking.customerName.split(' ')[0]} 👋\n\nThank you for booking with Luxe Nails Parlour!\n\nTo confirm your appointment, please pay your deposit of KSh ${Number(createdBooking.depositAmount).toLocaleString()} via the link below:\n\n${url}\n\nThe link has step-by-step M-Pesa instructions. Let me know once done! 💅`
+
+    // Normalise phone: strip leading 0 and add 254 country code
+    const rawPhone  = createdBooking.customerPhone.replace(/[\s\-]/g, '')
+    const waPhone   = rawPhone.startsWith('0')
+      ? '254' + rawPhone.slice(1)
+      : rawPhone.startsWith('+')
+      ? rawPhone.slice(1)
+      : rawPhone
+
+    const waUrl = `https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`
+    window.open(waUrl, '_blank')
+  }
+
+  // ── Success screen ─────────────────────────────────────────────────────────
+  if (createdBooking) {
+    const payUrl = `${SITE_URL}/pay/${createdBooking.id}`
+
+    return (
+      <div style={{ minHeight: '100vh', background: c.bg, fontFamily: fonts.body }}>
+        <nav style={{ background: c.dark, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 56 }}>
+          <span style={{ fontSize: 16, fontWeight: 400, color: c.gold, fontFamily: fonts.heading }}>Luxe Nails</span>
+          <button onClick={() => router.push('/admin/bookings')}
+            style={{ background: 'none', border: '1px solid #5A4A3A', color: '#9A8A72', padding: '6px 16px', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' as const, cursor: 'pointer', fontFamily: fonts.body, borderRadius: 2 }}>
+            ← All Bookings
+          </button>
+        </nav>
+
+        <div style={{ maxWidth: 560, margin: '0 auto', padding: '60px 24px' }}>
+
+          {/* Success banner */}
+          <div style={{ textAlign: 'center', marginBottom: 40 }}>
+            <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>✅</div>
+            <h1 style={{ fontFamily: fonts.heading, fontSize: 32, fontWeight: 400, color: c.dark, margin: '0 0 8px' }}>
+              Booking Created!
+            </h1>
+            <p style={{ color: c.muted, fontSize: 14, margin: 0 }}>
+              Booking for <strong>{createdBooking.customerName}</strong> has been saved.
+            </p>
+          </div>
+
+          {/* Payment link card */}
+          <div style={{ background: c.card, border: `1px solid ${c.border}`, borderRadius: 6, padding: '24px', marginBottom: 16 }}>
+            <p style={{ fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase' as const, color: c.gold, fontWeight: 600, margin: '0 0 6px' }}>
+              Payment Link
+            </p>
+            <p style={{ fontSize: 13, color: c.muted, margin: '0 0 16px', lineHeight: 1.6 }}>
+              Send this link to {createdBooking.customerName.split(' ')[0]} so they can pay the{' '}
+              <strong style={{ color: c.dark }}>KSh {Number(createdBooking.depositAmount).toLocaleString()}</strong> deposit via M-Pesa.
+            </p>
+
+            {/* URL display + copy */}
+            <div style={{ background: c.bg, border: `1px solid ${c.border}`, borderRadius: 4, padding: '10px 14px', marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+              <span style={{ fontSize: 12, color: c.dark, fontFamily: 'monospace', wordBreak: 'break-all' as const }}>
+                {payUrl}
+              </span>
+              <button onClick={copyLink}
+                style={{ background: linkCopied ? '#1A7A40' : c.dark, color: '#F5F0E8', border: 'none', borderRadius: 2, padding: '7px 14px', fontSize: 11, fontFamily: fonts.body, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', flexShrink: 0, transition: 'background 0.2s' }}>
+                {linkCopied ? '✓ Copied' : 'Copy'}
+              </button>
+            </div>
+
+            {/* Open WhatsApp directly */}
+            <button onClick={openWhatsApp}
+              style={{ width: '100%', padding: '13px', background: '#25D366', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontFamily: fonts.body, fontWeight: 600, letterSpacing: '0.06em', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <span style={{ fontSize: 18 }}>💬</span>
+              Send via WhatsApp
+            </button>
+            <p style={{ fontSize: 11, color: c.muted, margin: '8px 0 0', textAlign: 'center' }}>
+              Opens WhatsApp with {createdBooking.customerName.split(' ')[0]}'s number and message pre-filled — just hit send.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              onClick={() => {
+                setCreatedBooking(null)
+                setForm({
+                  customer_name: '', customer_phone: '', customer_email: '',
+                  service_id: '', artist_id: null, booking_date: '', start_time: '',
+                  location_type: 'in_shop', house_call_address: '',
+                  booking_source: 'whatsapp', deposit_collection: 'collected_offline', admin_notes: '',
+                })
+              }}
+              style={{ flex: 1, padding: '11px', background: 'transparent', border: `1px solid ${c.border}`, borderRadius: 2, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', fontFamily: fonts.body, color: c.muted }}>
+              + New Booking
+            </button>
+            <button onClick={() => router.push('/admin/bookings')}
+              style={{ flex: 1, padding: '11px', background: c.dark, color: '#F5F0E8', border: 'none', borderRadius: 2, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const, cursor: 'pointer', fontFamily: fonts.body, fontWeight: 600 }}>
+              View All Bookings
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Main form ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ minHeight: '100vh', background: c.bg, fontFamily: fonts.body }}>
 
@@ -164,19 +293,12 @@ export default function ManualBookingClient() {
 
       <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px 80px' }}>
 
-        {/* Header */}
         <h1 style={{ margin: '0 0 6px', fontSize: 36, fontWeight: 400, color: c.dark, fontFamily: fonts.heading }}>
           New Manual Booking
         </h1>
         <p style={{ margin: '0 0 32px', color: c.muted, fontSize: 14 }}>
           Create a booking for a customer who contacted you via WhatsApp, call, or walk-in.
         </p>
-
-        {success && (
-          <div style={{ background: '#EDF7F0', border: '1px solid #A8D5B5', borderRadius: 4, padding: '14px 18px', marginBottom: 24, fontSize: 14, color: '#1A7A40', fontFamily: fonts.body }}>
-            ✓ {success}
-          </div>
-        )}
 
         {error && (
           <div style={{ background: '#FEF0EE', border: '1px solid #E8A89A', borderRadius: 4, padding: '12px 16px', marginBottom: 24, fontSize: 13, color: '#8B3A2A' }}>
@@ -256,7 +378,6 @@ export default function ManualBookingClient() {
             <input style={{ ...inputStyle, maxWidth: 240 }} type="date" min={today}
               value={form.booking_date} onChange={e => set('booking_date', e.target.value)} />
           </div>
-
           {form.booking_date && form.service_id && (
             <div>
               <label style={labelStyle}>Time Slot *</label>
@@ -333,7 +454,7 @@ export default function ManualBookingClient() {
           )}
           <div style={{ display: 'flex', gap: 8 }}>
             {([
-              { value: 'collected_offline', label: '✓ Already Collected', sub: 'Cash or Mpesa done offline' },
+              { value: 'collected_offline', label: '✓ Already Collected', sub: 'Cash or M-Pesa done offline' },
               { value: 'payment_link',      label: '📤 Send Payment Link', sub: 'Customer pays via link' },
             ] as const).map(opt => (
               <div key={opt.value} onClick={() => set('deposit_collection', opt.value)}

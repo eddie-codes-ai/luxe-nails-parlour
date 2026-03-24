@@ -171,24 +171,26 @@ function BookingModal({
             </a>
           </div>
 
-          {/* Booking details */}
+          {/* ── Booking details table — tbody added to fix hydration error ── */}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
-            {[
-              ['Service',  booking.services?.name ?? '—'],
-              ['Artist',   booking.artists?.name ?? 'Owner assigns'],
-              ['Date',     formatDate(booking.booking_date)],
-              ['Time',     formatTime(booking.start_time)],
-              ['Location', booking.location_type === 'house_call'
-                ? `House call — ${booking.house_call_address}`
-                : 'At the studio'],
-              ['Source',   booking.booking_source],
-              ...(booking.is_late_night ? [['Type', '🌙 Late night']] : []),
-            ].map(([label, value]) => (
-              <tr key={label}>
-                <td style={{ padding: '8px 0', borderBottom: `1px solid ${c.border}`, fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: c.muted, fontFamily: fonts.body, width: '35%' }}>{label}</td>
-                <td style={{ padding: '8px 0', borderBottom: `1px solid ${c.border}`, fontSize: 13, color: c.dark, fontFamily: fonts.body }}>{value}</td>
-              </tr>
-            ))}
+            <tbody>
+              {[
+                ['Service',  booking.services?.name ?? '—'],
+                ['Artist',   booking.artists?.name ?? 'Owner assigns'],
+                ['Date',     formatDate(booking.booking_date)],
+                ['Time',     formatTime(booking.start_time)],
+                ['Location', booking.location_type === 'house_call'
+                  ? `House call — ${booking.house_call_address}`
+                  : 'At the studio'],
+                ['Source',   booking.booking_source],
+                ...(booking.is_late_night ? [['Type', '🌙 Late night']] : []),
+              ].map(([label, value]) => (
+                <tr key={label}>
+                  <td style={{ padding: '8px 0', borderBottom: `1px solid ${c.border}`, fontSize: 11, textTransform: 'uppercase' as const, letterSpacing: '0.08em', color: c.muted, fontFamily: fonts.body, width: '35%' }}>{label}</td>
+                  <td style={{ padding: '8px 0', borderBottom: `1px solid ${c.border}`, fontSize: 13, color: c.dark, fontFamily: fonts.body }}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
           </table>
 
           {/* Pricing */}
@@ -343,7 +345,6 @@ export default function BookingsClient() {
     }
   }
 
-  // ── Filter bookings ──────────────────────────────────────────────────────────
   const filtered = bookings.filter(b => {
     const matchesStatus = statusFilter === 'all' || b.status === statusFilter
     const matchesSearch = !search || [b.customer_name, b.customer_phone, b.services?.name ?? '']
@@ -351,7 +352,6 @@ export default function BookingsClient() {
     return matchesStatus && matchesSearch
   })
 
-  // ── Count by status for filter badges ────────────────────────────────────────
   const counts: Record<string, number> = { all: bookings.length }
   bookings.forEach(b => { counts[b.status] = (counts[b.status] ?? 0) + 1 })
 
