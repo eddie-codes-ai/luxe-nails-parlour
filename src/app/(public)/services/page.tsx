@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { createClient } from "@supabase/supabase-js";
 import ServicesPageClient from "./ServicesPageClient";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://luxe-nails-parlour.vercel.app";
@@ -26,6 +27,27 @@ export const metadata: Metadata = {
   },
 };
 
-export default function ServicesPage() {
-  return <ServicesPageClient />;
+async function getActiveServices() {
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data, error } = await supabase
+    .from("services")
+    .select("id, name, description, base_price, duration_minutes, category, house_call_available, includes, add_ons")
+    .eq("is_active", true)
+    .order("category")
+    .order("base_price");
+
+  if (error) {
+    console.error("Failed to fetch services:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+export default async function ServicesPage() {
+  const services = await getActiveServices();
+  return <ServicesPageClient services={services} />;
 }

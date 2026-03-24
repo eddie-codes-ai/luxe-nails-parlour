@@ -11,7 +11,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, description, base_price, duration_minutes, category, house_call_available, is_active, created_at")
+    .select("id, name, description, base_price, duration_minutes, category, house_call_available, is_active, includes, add_ons, created_at")
     .order("category", { ascending: true })
     .order("name",     { ascending: true });
 
@@ -26,7 +26,17 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { name, description, base_price, duration_minutes, category, house_call_available, is_active } = body;
+  const {
+    name,
+    description,
+    base_price,
+    duration_minutes,
+    category,
+    house_call_available,
+    is_active,
+    includes,
+    add_ons,
+  } = body;
 
   if (!name?.trim() || !base_price || !duration_minutes || !category?.trim()) {
     return NextResponse.json(
@@ -43,6 +53,8 @@ export async function POST(req: NextRequest) {
     category:             category.trim(),
     house_call_available: house_call_available !== false,
     is_active:            is_active !== false,
+    includes:             Array.isArray(includes) ? includes : [],
+    add_ons:              Array.isArray(add_ons)  ? add_ons  : [],
   }]);
 
   if (error) {
@@ -56,7 +68,18 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const { id, name, description, base_price, duration_minutes, category, house_call_available, is_active } = body;
+  const {
+    id,
+    name,
+    description,
+    base_price,
+    duration_minutes,
+    category,
+    house_call_available,
+    is_active,
+    includes,
+    add_ons,
+  } = body;
 
   if (!id) {
     return NextResponse.json({ error: "id is required." }, { status: 400 });
@@ -72,6 +95,8 @@ export async function PUT(req: NextRequest) {
       category:             category?.trim(),
       house_call_available: Boolean(house_call_available),
       is_active:            Boolean(is_active),
+      includes:             Array.isArray(includes) ? includes : [],
+      add_ons:              Array.isArray(add_ons)  ? add_ons  : [],
       updated_at:           new Date().toISOString(),
     })
     .eq("id", id);

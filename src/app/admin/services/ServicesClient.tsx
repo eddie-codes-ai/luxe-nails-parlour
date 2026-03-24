@@ -10,6 +10,11 @@ interface ServiceCategory {
   name: string;
 }
 
+interface AddOn {
+  name: string;
+  price: number;
+}
+
 interface Service {
   id?: string;
   name: string;
@@ -19,6 +24,8 @@ interface Service {
   category: string;
   house_call_available: boolean;
   is_active: boolean;
+  includes: string[];
+  add_ons: AddOn[];
 }
 
 const emptyService: Service = {
@@ -29,6 +36,8 @@ const emptyService: Service = {
   category: "",
   house_call_available: true,
   is_active: true,
+  includes: [],
+  add_ons: [],
 };
 
 // ─── Style tokens ─────────────────────────────────────────────────────────────
@@ -65,6 +74,18 @@ const selectStyle = {
   cursor: "pointer",
 };
 
+const smallBtnStyle = {
+  background: "none",
+  border: "1px solid #E5E0D8",
+  borderRadius: "2px",
+  padding: "6px 12px",
+  cursor: "pointer",
+  fontSize: "11px",
+  fontFamily: "'Jost', sans-serif",
+  color: "rgba(45,36,36,0.5)",
+  letterSpacing: "0.08em",
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDuration(minutes: number): string {
@@ -81,19 +102,43 @@ function formatDuration(minutes: number): string {
 export default function ServicesClient() {
   const router = useRouter();
 
-  const [services,       setServices]    = useState<Service[]>([]);
-  const [serviceCategories, setServiceCategories] = useState<ServiceCategory[]>([]);
-  const [loading,        setLoading]     = useState(true);
-  const [showForm,       setShowForm]    = useState(false);
-  const [editingService, setEditing]     = useState<Service | null>(null);
-  const [form,           setForm]        = useState<Service>(emptyService);
-  const [saving,         setSaving]      = useState(false);
-  const [deletingId,     setDeletingId]  = useState<string | null>(null);
-  const [togglingId,     setTogglingId]  = useState<string | null>(null);
-  const [error,          setError]       = useState("");
-  const [success,        setSuccess]     = useState("");
-  const [hoverBack,      setHoverBack]   = useState(false);
-  const [filterActive,   setFilterActive]= useState<"all" | "active" | "inactive">("all");
+  const [services,           setServices]          = useState<Service[]>([]);
+  const [serviceCategories,  setServiceCategories] = useState<ServiceCategory[]>([]);
+  const [loading,            setLoading]           = useState(true);
+  const [showForm,           setShowForm]          = useState(false);
+  const [editingService,     setEditing]           = useState<Service | null>(null);
+  const [form,               setForm]              = useState<Service>(emptyService);
+  const [saving,             setSaving]            = useState(false);
+  const [deletingId,         setDeletingId]        = useState<string | null>(null);
+  const [togglingId,         setTogglingId]        = useState<string | null>(null);
+  const [error,              setError]             = useState("");
+  const [success,            setSuccess]           = useState("");
+  const [hoverBack,          setHoverBack]         = useState(false);
+  const [filterActive,       setFilterActive]      = useState<"all" | "active" | "inactive">("all");
+
+  // ── includes helpers ────────────────────────────────────────────────────────
+
+  const addInclude = () => setForm(f => ({ ...f, includes: [...f.includes, ""] }));
+
+  const updateInclude = (i: number, val: string) =>
+    setForm(f => { const arr = [...f.includes]; arr[i] = val; return { ...f, includes: arr }; });
+
+  const removeInclude = (i: number) =>
+    setForm(f => ({ ...f, includes: f.includes.filter((_, idx) => idx !== i) }));
+
+  // ── add_ons helpers ─────────────────────────────────────────────────────────
+
+  const addAddOn = () => setForm(f => ({ ...f, add_ons: [...f.add_ons, { name: "", price: 0 }] }));
+
+  const updateAddOn = (i: number, field: keyof AddOn, val: string | number) =>
+    setForm(f => {
+      const arr = [...f.add_ons];
+      arr[i] = { ...arr[i], [field]: field === "price" ? Number(val) : val };
+      return { ...f, add_ons: arr };
+    });
+
+  const removeAddOn = (i: number) =>
+    setForm(f => ({ ...f, add_ons: f.add_ons.filter((_, idx) => idx !== i) }));
 
   // ── Fetch ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +178,8 @@ export default function ServicesClient() {
       base_price:       Number(service.base_price),
       duration_minutes: Number(service.duration_minutes),
       category:         service.category ?? "",
+      includes:         Array.isArray(service.includes) ? service.includes : [],
+      add_ons:          Array.isArray(service.add_ons)  ? service.add_ons  : [],
     });
     setShowForm(true);
     setError("");
@@ -154,11 +201,18 @@ export default function ServicesClient() {
     if (!form.duration_minutes || form.duration_minutes <= 0) { setError("Please enter a valid duration."); return; }
     if (!form.category)                                       { setError("Please select a category.");      return; }
 
+    // Clean out blank includes / add-ons
+    const cleanedForm = {
+      ...form,
+      includes: form.includes.filter(s => s.trim() !== ""),
+      add_ons:  form.add_ons.filter(a => a.name.trim() !== ""),
+    };
+
     setSaving(true);
     setError("");
 
     const method = editingService?.id ? "PUT" : "POST";
-    const body   = editingService?.id ? { ...form, id: editingService.id } : form;
+    const body   = editingService?.id ? { ...cleanedForm, id: editingService.id } : cleanedForm;
 
     const res  = await fetch("/api/admin/services", {
       method,
@@ -271,7 +325,6 @@ export default function ServicesClient() {
         </div>
 
         <div style={{ display: "flex", gap: "12px" }}>
-          {/* Links to the dedicated service categories manager */}
           <button
             type="button"
             onClick={() => router.push("/admin/service-categories")}
@@ -381,7 +434,7 @@ export default function ServicesClient() {
                 )}
               </div>
 
-              {/* Category — dynamic from service_categories table */}
+              {/* Category */}
               <div>
                 <label style={labelStyle}>Category *</label>
                 <select
@@ -402,17 +455,6 @@ export default function ServicesClient() {
                       style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
                     >
                       Add some first
-                    </span>
-                  </p>
-                )}
-                {serviceCategories.length > 0 && (
-                  <p style={{ fontSize: "11px", color: "rgba(45,36,36,0.4)", marginTop: "5px" }}>
-                    Need a new category?{" "}
-                    <span
-                      onClick={() => router.push("/admin/service-categories")}
-                      style={{ color: "#C5A358", cursor: "pointer", textDecoration: "underline" }}
-                    >
-                      Manage service categories
                     </span>
                   </p>
                 )}
@@ -456,7 +498,97 @@ export default function ServicesClient() {
                   placeholder="Brief description shown to customers during booking..."
                 />
               </div>
-            </div>
+
+              {/* ── What's Included ── */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <label style={{ ...labelStyle, margin: 0 }}>What's Included</label>
+                  <button type="button" onClick={addInclude} style={{ ...smallBtnStyle, color: "#C5A358", borderColor: "rgba(197,163,88,0.4)" }}>
+                    + Add Item
+                  </button>
+                </div>
+
+                {form.includes.length === 0 && (
+                  <p style={{ fontSize: "12px", color: "rgba(45,36,36,0.3)", fontStyle: "italic" }}>
+                    No items yet — click "+ Add Item" to list what's included in this service.
+                  </p>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {form.includes.map((item, i) => (
+                    <div key={i} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <span style={{ color: "#C5A358", fontWeight: 700, fontSize: "13px", flexShrink: 0 }}>✓</span>
+                      <input
+                        style={{ ...inputStyle, flex: 1 }}
+                        value={item}
+                        onChange={e => updateInclude(i, e.target.value)}
+                        placeholder="e.g. Nail shaping & filing"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeInclude(i)}
+                        style={{ ...smallBtnStyle, color: "#991b1b", borderColor: "#fecaca", flexShrink: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Optional Add-ons ── */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                  <label style={{ ...labelStyle, margin: 0 }}>Optional Add-ons</label>
+                  <button type="button" onClick={addAddOn} style={{ ...smallBtnStyle, color: "#C5A358", borderColor: "rgba(197,163,88,0.4)" }}>
+                    + Add Add-on
+                  </button>
+                </div>
+
+                {form.add_ons.length === 0 && (
+                  <p style={{ fontSize: "12px", color: "rgba(45,36,36,0.3)", fontStyle: "italic" }}>
+                    No add-ons yet — click "+ Add Add-on" to offer optional upgrades.
+                  </p>
+                )}
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {form.add_ons.map((addon, i) => (
+                    <div key={i} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                      <input
+                        style={{ ...inputStyle, flex: 2 }}
+                        value={addon.name}
+                        onChange={e => updateAddOn(i, "name", e.target.value)}
+                        placeholder="e.g. Gel Polish Upgrade"
+                      />
+                      <div style={{ position: "relative", flex: 1 }}>
+                        <input
+                          style={{ ...inputStyle, paddingRight: "44px" }}
+                          type="number"
+                          min="0"
+                          value={addon.price || ""}
+                          onChange={e => updateAddOn(i, "price", e.target.value)}
+                          placeholder="400"
+                        />
+                        <span style={{
+                          position: "absolute", right: "12px", top: "50%", transform: "translateY(-50%)",
+                          fontSize: "11px", color: "rgba(45,36,36,0.35)", pointerEvents: "none",
+                        }}>
+                          KES
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAddOn(i)}
+                        style={{ ...smallBtnStyle, color: "#991b1b", borderColor: "#fecaca", flexShrink: 0 }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>{/* end grid */}
 
             <div style={{ display: "flex", gap: "12px", marginTop: "28px" }}>
               <button
@@ -592,6 +724,22 @@ export default function ServicesClient() {
                         background: "#EFF7FF", color: "#2563A8", border: "1px solid #BFDBFE",
                       }}>
                         🚗 House calls
+                      </span>
+                    )}
+                    {Array.isArray(service.includes) && service.includes.length > 0 && (
+                      <span style={{
+                        fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
+                        background: "#F5F3FF", color: "#5B21B6", border: "1px solid #DDD6FE",
+                      }}>
+                        {service.includes.length} included
+                      </span>
+                    )}
+                    {Array.isArray(service.add_ons) && service.add_ons.length > 0 && (
+                      <span style={{
+                        fontSize: "10px", padding: "2px 8px", borderRadius: "20px",
+                        background: "#FFF7ED", color: "#C2410C", border: "1px solid #FED7AA",
+                      }}>
+                        {service.add_ons.length} add-on{service.add_ons.length !== 1 ? "s" : ""}
                       </span>
                     )}
                   </div>
