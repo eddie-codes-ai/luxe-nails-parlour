@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+
+README.md:
+# 💅 Luxe Nails Parlour
+
+![Next.js](https://img.shields.io/badge/Next.js-black?logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-3ecf8e?logo=supabase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-06b6d4?logo=tailwindcss&logoColor=white)
+
+A full-stack booking platform for a Nairobi nail studio, replacing the usual "DM to book" chaos with a structured, artist-centric flow — from service selection through to M-Pesa payment — backed by an admin dashboard that runs the business day-to-day.
+
+## Highlights
+
+- 7-step artist-centric booking flow — service, optional add-ons (e.g. hand-painted art), artist/availability assignment, timing, storefront-or-mobile choice, fee summary, and M-Pesa payment
+- Real-time staffing logic across 5 technicians — keeps at least one storefront-only at all times, caps mobile sessions at 3–4 concurrent, and auto-restricts the 5th booking to storefront once mobile capacity is full
+- Mobile appointments carry a flat 1,000 KES surcharge with a 45–60 minute travel buffer built into scheduling
+- M-Pesa deposit payments via dynamic payment links, with a WhatsApp-integrated confirmation flow
+- Admin dashboard with full booking lifecycle management and a no-code services manager (full CRUD)
+- Cron job for automatic booking expiry
+- Full SEO — meta tags, Open Graph images, sitemap, robots.txt — plus GA4 and Vercel Analytics
+- Phase 2 (planned): a standalone e-commerce shop for aftercare products, promoted post-booking
+
+## Tech Stack
+
+- Next.js, TypeScript, Tailwind CSS
+- Supabase (PostgreSQL)
+- Resend (transactional email)
+- Vercel Analytics
+
+## Project Structure
+
+luxe-nails-parlour/
+├── docs/                   # business logic, branding, service menu, artist mobile-ops
+├── src/
+│   ├── app/
+│   ├── components/
+│   ├── data/
+│   ├── lib/
+│   └── proxy.ts
+└── public/
 
 ## Getting Started
 
-First, run the development server:
-
-```bash
+\`\`\`bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+\`\`\`
