@@ -84,6 +84,8 @@ export interface NewBookingEmailData {
   locationType:     'in_shop' | 'house_call'
   houseCallAddress?: string
   servicePrice:     number
+  addOns?:          { name: string; price: number }[]
+  addOnsTotal?:     number
   travelFee:        number
   lateNightFee:     number
   depositAmount:    number
@@ -93,7 +95,8 @@ export interface NewBookingEmailData {
 }
 
 export function ownerNewBookingEmail(data: NewBookingEmailData): string {
-  const totalPrice = data.servicePrice + data.travelFee + data.lateNightFee
+  const addOnsTotal = data.addOnsTotal ?? 0
+  const totalPrice = data.servicePrice + addOnsTotal + data.travelFee + data.lateNightFee
   const kes = (n: number) => `KSh ${n.toLocaleString()}`
 
   const sourceLabel: Record<string, string> = {
@@ -137,6 +140,7 @@ export function ownerNewBookingEmail(data: NewBookingEmailData): string {
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
       ${goldDivider()}
       ${row('Service price', kes(data.servicePrice))}
+      ${(data.addOns ?? []).map(a => row(`+ ${a.name}`, kes(a.price))).join('')}
       ${data.travelFee > 0 ? row('Travel fee', kes(data.travelFee)) : ''}
       ${data.lateNightFee > 0 ? row('Late night surcharge', kes(data.lateNightFee)) : ''}
       ${row('Total', kes(totalPrice))}

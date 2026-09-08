@@ -4,12 +4,18 @@ import { useState, useEffect, useCallback } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface AddOn {
+  name: string
+  price: number
+}
+
 interface Service {
   id: string
   name: string
   base_price: number
   duration_minutes: number
   house_call_available: boolean
+  add_ons?: AddOn[] | null
 }
 
 interface Artist {
@@ -38,12 +44,15 @@ interface BookingForm {
   start_time: string
   location_type: 'in_shop' | 'house_call'
   house_call_address: string
+  add_ons: string[]
 }
 
 interface CreatedBooking {
   booking: { id: string; status: string }
   deposit_amount: number
   service_price: number
+  add_ons: AddOn[]
+  add_ons_total: number
   travel_fee: number
   late_night_fee: number
   is_late_night: boolean
@@ -118,7 +127,10 @@ function Btn({ children, onClick, disabled, ghost, full }: { children: React.Rea
 }
 
 function Steps({ current }: { current: number }) {
-  const steps = [{ n: 1, l: 'Service' }, { n: 2, l: 'Date & Time' }, { n: 3, l: 'Location' }, { n: 4, l: 'Details' }, { n: 5, l: 'Deposit' }]
+  const steps = [
+    { n: 1, l: 'Service' }, { n: 2, l: 'Add-ons' }, { n: 3, l: 'Date & Time' },
+    { n: 4, l: 'Location' }, { n: 5, l: 'Details' }, { n: 6, l: 'Deposit' },
+  ]
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', marginBottom: '3rem', overflowX: 'auto' as const, paddingBottom: '0.25rem' }}>
       {steps.map((s, i) => (
@@ -162,7 +174,7 @@ export default function BookingClient() {
 
   const [form, setForm] = useState<BookingForm>({
     customer_name: '', customer_phone: '', customer_email: '',
-    service_id: '', artist_id: null,
+    service_id: '', artist_id: null, add_ons: [],
     booking_date: '', start_time: '',
     location_type: 'in_shop', house_call_address: '',
   })
@@ -176,6 +188,19 @@ export default function BookingClient() {
   // A house call needs both a service that offers it and an artist who travels.
   // The artist half was previously unchecked, so a studio-only artist could be
   // booked for one.
+  const availableAddOns: AddOn[] = Array.isArray(svc?.add_ons) ? svc.add_ons : []
+  const addOnsTotal = availableAddOns
+    .filter(a => form.add_ons.includes(a.name))
+    .reduce((sum, a) => sum + Number(a.price ?? 0), 0)
+
+  const toggleAddOn = (name: string) =>
+    setForm(prev => ({
+      ...prev,
+      add_ons: prev.add_ons.includes(name)
+        ? prev.add_ons.filter(n => n !== name)
+        : [...prev.add_ons, name],
+    }))
+
   const anyArtistTravels = artists.some(a => a.mobile_available)
   const houseCallAvailable =
     !!svc?.house_call_available && (art ? !!art.mobile_available : anyArtistTravels)
@@ -218,6 +243,10 @@ export default function BookingClient() {
     finally { setSlotsLoading(false) }
   }, [form.artist_id, form.booking_date, form.service_id, form.location_type])
 
+  useEffect(() => {
+    setForm(prev => (prev.add_ons.length ? { ...prev, add_ons: [] } : prev))
+  }, [form.service_id])
+
   useEffect(() => { fetchSlots() }, [fetchSlots])
 
   useEffect(() => {
@@ -237,12 +266,13 @@ export default function BookingClient() {
           service_id: form.service_id, artist_id: form.artist_id,
           booking_date: form.booking_date, start_time: form.start_time,
           location_type: form.location_type,
+          add_ons: form.add_ons,
           house_call_address: form.location_type === 'house_call' ? form.house_call_address : undefined,
         }),
       })
       const d = await r.json()
       if (!r.ok) { setSubmitError(d.error ?? 'Something went wrong'); return }
-      setCreated(d); setStep(5)
+      setCreated(d); setStep(6)
     } catch { setSubmitError('Network error. Please try again.') }
     finally { setSubmitting(false) }
   }
@@ -339,8 +369,64 @@ export default function BookingClient() {
           </div>
         )}
 
-        {/* ── STEP 2: Date & Time ── */}
+
+        {/* ── STEP 2: Add-ons ── */}
         {step === 2 && (
+          <div>
+            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Make It Yours</h2>
+            <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>
+              {availableAddOns.length
+                ? 'Optional extras for your ' + (svc?.name ?? 'service') + '. Skip any you don’t want.'
+                : 'No add-ons are offered for this service — continue to pick your time.'}
+            </p>
+
+            {availableAddOns.length > 0 && (
+              <div style={{ display: 'grid', gap: '0.75rem', marginBottom: '2rem' }}>
+                {availableAddOns.map(a => {
+                  const checked = form.add_ons.includes(a.name)
+                  return (
+                    <div key={a.name} onClick={() => toggleAddOn(a.name)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '1rem 1.15rem', border: `1.5px solid ${checked ? css.gold : css.border}`, background: checked ? '#FEFBF5' : css.card, borderRadius: 2, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 2, border: `1.5px solid ${checked ? css.gold : css.border}`, background: checked ? css.gold : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: css.bg, fontSize: '0.7rem' }}>
+                        {checked && '✓'}
+                      </div>
+                      <div style={{ flex: 1, fontSize: '0.92rem', color: css.dark }}>{a.name}</div>
+                      <div style={{ fontSize: '0.9rem', color: css.gold, fontWeight: 600 }}>+{KES(Number(a.price ?? 0))}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Running total so the price is never a surprise at the deposit step */}
+            <div style={{ background: css.card, border: `1px solid ${css.border}`, borderRadius: 2, padding: '1rem 1.15rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: css.muted, marginBottom: '0.4rem' }}>
+                <span>{svc?.name ?? 'Service'}</span><span>{KES(Number(svc?.base_price ?? 0))}</span>
+              </div>
+              {addOnsTotal > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: css.muted, marginBottom: '0.4rem' }}>
+                  <span>Add-ons ({form.add_ons.length})</span><span>+{KES(addOnsTotal)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.6rem', borderTop: `1px solid ${css.border}`, fontSize: '0.95rem', color: css.dark, fontWeight: 600 }}>
+                <span>Subtotal</span><span>{KES(Number(svc?.base_price ?? 0) + addOnsTotal)}</span>
+              </div>
+              <p style={{ fontSize: '0.72rem', color: css.muted, margin: '0.5rem 0 0' }}>
+                Travel fee and any late-night surcharge are added at the next steps.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+              <Btn ghost onClick={() => setStep(1)}>← Back</Btn>
+              <Btn onClick={() => setStep(3)}>
+                {form.add_ons.length ? 'Continue →' : 'Skip →'}
+              </Btn>
+            </div>
+          </div>
+        )}
+
+        {/* ── STEP 3: Date & Time ── */}
+        {step === 3 && (
           <div>
             <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Pick a Date & Time</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>
@@ -420,14 +506,14 @@ export default function BookingClient() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <Btn ghost onClick={() => setStep(1)}>← Back</Btn>
-              <Btn disabled={!form.booking_date || !form.start_time} onClick={() => setStep(3)}>Continue →</Btn>
+              <Btn ghost onClick={() => setStep(2)}>← Back</Btn>
+              <Btn disabled={!form.booking_date || !form.start_time} onClick={() => setStep(4)}>Continue →</Btn>
             </div>
           </div>
         )}
 
-        {/* ── STEP 3: Location ── */}
-        {step === 3 && (
+        {/* ── STEP 4: Location ── */}
+        {step === 4 && (
           <div>
             <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Service Location</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>Where would you like your appointment?</p>
@@ -462,14 +548,14 @@ export default function BookingClient() {
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <Btn ghost onClick={() => setStep(2)}>← Back</Btn>
-              <Btn disabled={form.location_type === 'house_call' && !form.house_call_address.trim()} onClick={() => setStep(4)}>Continue →</Btn>
+              <Btn ghost onClick={() => setStep(3)}>← Back</Btn>
+              <Btn disabled={form.location_type === 'house_call' && !form.house_call_address.trim()} onClick={() => setStep(5)}>Continue →</Btn>
             </div>
           </div>
         )}
 
-        {/* ── STEP 4: Details ── */}
-        {step === 4 && (
+        {/* ── STEP 5: Details ── */}
+        {step === 5 && (
           <div>
             <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Your Details</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>We'll use these to confirm your booking and send reminders.</p>
@@ -504,7 +590,7 @@ export default function BookingClient() {
             {submitError && <div style={{ padding: '0.75rem 1rem', background: '#FEF0F0', border: '1px solid #F0B0B0', borderRadius: 2, color: '#8B1313', fontSize: '0.85rem', marginBottom: '1rem' }}>{submitError}</div>}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <Btn ghost onClick={() => setStep(3)}>← Back</Btn>
+              <Btn ghost onClick={() => setStep(4)}>← Back</Btn>
               <Btn disabled={!form.customer_name.trim() || !form.customer_phone.trim() || submitting} onClick={submitBooking}>
                 {submitting ? 'Reserving...' : 'Reserve My Slot →'}
               </Btn>
@@ -512,8 +598,8 @@ export default function BookingClient() {
           </div>
         )}
 
-        {/* ── STEP 5: Deposit ── */}
-        {step === 5 && created && (
+        {/* ── STEP 6: Deposit ── */}
+        {step === 6 && created && (
           <div>
             {created.is_late_night ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
@@ -547,6 +633,9 @@ export default function BookingClient() {
                   <p style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: css.muted, marginBottom: '0.75rem' }}>Payment Breakdown</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.88rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: css.muted }}>Service price</span><span style={{ color: css.dark }}>{KES(created.service_price)}</span></div>
+                    {(created.add_ons ?? []).map(a => (
+                      <div key={a.name} style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: css.muted }}>+ {a.name}</span><span style={{ color: css.dark }}>{KES(Number(a.price))}</span></div>
+                    ))}
                     {created.travel_fee > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: css.muted }}>Travel fee</span><span style={{ color: css.dark }}>{KES(created.travel_fee)}</span></div>}
                     {created.late_night_fee > 0 && <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: css.muted }}>Late night surcharge</span><span style={{ color: css.dark }}>{KES(created.late_night_fee)}</span></div>}
                     <div style={{ height: 1, background: css.border, margin: '0.25rem 0' }} />

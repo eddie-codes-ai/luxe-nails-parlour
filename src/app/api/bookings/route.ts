@@ -21,6 +21,13 @@ interface CreateBookingBody {
   start_time:          string
   location_type:       'in_shop' | 'house_call'
   house_call_address?: string
+  /** Names of chosen add-ons. Prices are resolved server-side, never trusted from the client. */
+  add_ons?:            string[]
+}
+
+interface AddOn {
+  name:  string
+  price: number
 }
 
 function timeToMins(time: string): number {
@@ -122,7 +129,7 @@ export async function POST(req: NextRequest) {
   const {
     customer_name, customer_phone, customer_email,
     service_id, artist_id, booking_date, start_time,
-    location_type, house_call_address,
+    location_type, house_call_address, add_ons,
   } = body
 
   if (!customer_name?.trim()) return NextResponse.json({ error: 'Customer name is required' }, { status: 400 })
@@ -141,12 +148,32 @@ export async function POST(req: NextRequest) {
   try {
     const { data: service, error: serviceError } = await supabase
       .from('services')
-      .select('id, name, duration_minutes, base_price, house_call_available')
+      .select('id, name, duration_minutes, base_price, house_call_available, add_ons')
       .eq('id', service_id)
       .single()
 
     if (serviceError || !service) return NextResponse.json({ error: 'Service not found' }, { status: 404 })
     if (location_type === 'house_call' && !service.house_call_available) return NextResponse.json({ error: 'This service is not available as a house call' }, { status: 400 })
+
+    // Match requested names against the service's own add-on list. A name that
+    // is not offered is rejected rather than silently dropped, so the customer
+    // is never charged a different total from the one they were shown.
+    const offered: AddOn[] = Array.isArray(service.add_ons) ? service.add_ons : []
+    const requested = Array.isArray(add_ons) ? add_ons : []
+    const selectedAddOns: AddOn[] = []
+
+    for (const name of requested) {
+      const match = offered.find(a => a?.name === name)
+      if (!match) {
+        return NextResponse.json(
+          { error: `"${name}" is not an available add-on for this service.` },
+          { status: 400 }
+        )
+      }
+      selectedAddOns.push({ name: match.name, price: Number(match.price ?? 0) })
+    }
+
+    const addOnsTotal        = Math.round(selectedAddOns.reduce((sum, a) => sum + a.price, 0) * 100) / 100
 
     const isAnyArtist = !artist_id
 
@@ -265,24 +292,38 @@ export async function POST(req: NextRequest) {
     const servicePrice       = Number(service.base_price ?? 0)
     const houseTravelFee     = location_type === 'house_call' ? Number(travelFee) : 0
     const lateNightFee       = isLateNight ? Math.round(servicePrice * (lateNightSurcharge / 100) * 100) / 100 : 0
-    const totalBeforeDeposit = servicePrice + houseTravelFee + lateNightFee
+    // Add-ons count toward the deposit base. The late-night surcharge stays on
+    // the base service price, matching existing behaviour.
+    const totalBeforeDeposit = servicePrice + addOnsTotal + houseTravelFee + lateNightFee
     const depositAmount      = Math.round(totalBeforeDeposit * (depositPercent / 100) * 100) / 100
     const initialStatus      = isLateNight ? 'pending_approval' : 'pending_payment'
     const expiryMinutes      = isLateNight ? 60 * 24 : slotHoldMinutes
     const expiresAt          = new Date(Date.now() + expiryMinutes * 60 * 1000).toISOString()
 
-    const { data: booking, error: insertError } = await supabase
+    const baseRow = {
+      customer_name: customer_name.trim(), customer_phone: customer_phone.trim(),
+      customer_email: customer_email?.trim() ?? null, service_id, artist_id, booking_date,
+      start_time, end_time, location_type,
+      house_call_address: location_type === 'house_call' ? house_call_address!.trim() : null,
+      service_price: servicePrice, travel_fee: houseTravelFee, late_night_surcharge: lateNightFee,
+      deposit_amount: depositAmount, is_late_night: isLateNight, status: initialStatus,
+      booking_source: 'website', expires_at: expiresAt,
+    }
+
+    let { data: booking, error: insertError } = await supabase
       .from('bookings')
-      .insert({
-        customer_name: customer_name.trim(), customer_phone: customer_phone.trim(),
-        customer_email: customer_email?.trim() ?? null, service_id, artist_id, booking_date,
-        start_time, end_time, location_type,
-        house_call_address: location_type === 'house_call' ? house_call_address!.trim() : null,
-        service_price: servicePrice, travel_fee: houseTravelFee, late_night_surcharge: lateNightFee,
-        deposit_amount: depositAmount, is_late_night: isLateNight, status: initialStatus,
-        booking_source: 'website', expires_at: expiresAt,
-      })
+      .insert({ ...baseRow, add_ons: selectedAddOns, add_ons_total: addOnsTotal })
       .select().single()
+
+    // add_ons/add_ons_total are new columns. Until the migration is applied,
+    // still take the booking rather than failing the customer's checkout - the
+    // deposit already reflects the add-ons either way.
+    if (insertError && (insertError.code === 'PGRST204' || insertError.code === '42703')) {
+      console.warn('[bookings] add_ons columns missing - saving without them. Run the migration.')
+      const retry = await supabase.from('bookings').insert(baseRow).select().single()
+      booking = retry.data
+      insertError = retry.error
+    }
 
     if (insertError || !booking) {
       console.error('[bookings] insert error:', insertError)
@@ -302,7 +343,8 @@ export async function POST(req: NextRequest) {
       customerEmail: customer_email?.trim(), serviceName: service.name,
       artistName: artist?.name ?? 'Owner assigns', bookingDate: formattedDate,
       startTime: formattedTime, locationType: location_type,
-      houseCallAddress: house_call_address?.trim(), servicePrice, travelFee: houseTravelFee,
+      houseCallAddress: house_call_address?.trim(), servicePrice,
+      addOns: selectedAddOns, addOnsTotal, travelFee: houseTravelFee,
       lateNightFee, depositAmount, bookingId: booking.id, isLateNight, bookingSource: 'website',
     }
 
@@ -315,6 +357,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       booking, is_late_night: isLateNight, deposit_amount: depositAmount,
       service_price: servicePrice, travel_fee: houseTravelFee, late_night_fee: lateNightFee,
+      add_ons: selectedAddOns, add_ons_total: addOnsTotal,
       expires_at: expiresAt,
       message: isLateNight
         ? 'Your late-night request has been submitted. The artist will confirm your slot before payment is requested.'
