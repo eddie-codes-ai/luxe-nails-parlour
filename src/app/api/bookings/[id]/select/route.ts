@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { holdsSlot } from '@/lib/booking-holds'
+import { getDefaultHours, resolveHours, timeToMins as toMins } from '@/lib/working-hours'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,17 +49,20 @@ async function availableMinutes(booking: {
 }): Promise<{ windowMins: number; bufferMins: number }> {
   const startMins = timeToMins(booking.start_time)
 
+  const defaults = await getDefaultHours(supabase)
+
   let bufferMins = 0
-  let endOfDay = timeToMins('19:00')
+  let endOfDay = toMins(defaults.lateEnd ?? defaults.end)
 
   if (booking.artist_id) {
     const [{ data: artist }, { data: schedule }] = await Promise.all([
       supabase.from('artists').select('buffer_minutes').eq('id', booking.artist_id).single(),
-      supabase.from('artist_schedules').select('end_time, late_end_time')
+      supabase.from('artist_schedules').select('start_time, end_time, late_cutoff_time, late_end_time')
         .eq('artist_id', booking.artist_id).eq('schedule_date', booking.booking_date).maybeSingle(),
     ])
     bufferMins = artist?.buffer_minutes ?? 0
-    endOfDay = timeToMins(schedule?.late_end_time ?? schedule?.end_time ?? '19:00')
+    const hours = resolveHours(schedule, defaults)
+    endOfDay = toMins(hours.lateEnd ?? hours.end)
   }
 
   // The artist's next appointment caps the window.

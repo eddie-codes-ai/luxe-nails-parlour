@@ -5,6 +5,7 @@ import { ownerNewBookingEmail, NewBookingEmailData } from '@/lib/email-templates
 import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
+import { getDefaultHours, isLateStart, resolveHours, startBounds, type WorkingHours } from '@/lib/working-hours'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -75,22 +76,20 @@ function evaluateCandidate(
   artist: ArtistRow,
   schedule: ScheduleRow | null,
   startMins: number,
-  durationMins: number
+  durationMins: number,
+  defaultHours: WorkingHours
 ): Candidate | null {
   if (schedule?.is_blocked) return null
 
-  const dayStartMins   = timeToMins(schedule?.start_time ?? '09:30')
-  const dayEndMins     = timeToMins(schedule?.end_time   ?? '19:00')
-  const lateCutoffMins = schedule?.late_cutoff_time ? timeToMins(schedule.late_cutoff_time) : null
-  const lateEndMins    = schedule?.late_end_time    ? timeToMins(schedule.late_end_time)    : null
+  const bounds = startBounds(resolveHours(schedule, defaultHours), durationMins)
 
-  const isLateNight  = lateCutoffMins !== null && startMins >= lateCutoffMins
-  const withinNormal = startMins >= dayStartMins && startMins < dayEndMins
-  const withinLate   = isLateNight && lateEndMins !== null && startMins < lateEndMins
+  if (startMins < bounds.minStart || startMins > bounds.maxStart) return null
 
-  if (!withinNormal && !withinLate) return null
-
-  return { artist, isLateNight, endMins: startMins + durationMins + (artist.buffer_minutes ?? 0) }
+  return {
+    artist,
+    isLateNight: isLateStart(startMins, bounds),
+    endMins: startMins + durationMins + (artist.buffer_minutes ?? 0),
+  }
 }
 
 // ── GET /api/bookings?id=xxx — fetch single booking for cancel page ──────────
@@ -228,8 +227,10 @@ export async function POST(req: NextRequest) {
       .eq('schedule_date', booking_date)
 
     // Every artist whose working hours cover the requested start time.
+    const defaultHours = await getDefaultHours(supabase)
+
     const candidates = artistPool
-      .map(a => evaluateCandidate(a, schedules?.find(s => s.artist_id === a.id) ?? null, startMins, service.duration_minutes))
+      .map(a => evaluateCandidate(a, schedules?.find(s => s.artist_id === a.id) ?? null, startMins, service.duration_minutes, defaultHours))
       .filter((c): c is Candidate => c !== null)
 
     if (!candidates.length) {

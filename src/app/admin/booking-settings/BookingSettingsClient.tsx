@@ -13,6 +13,10 @@ interface BookingSettings {
   owner_whatsapp:               string
   owner_email:                  string
   mpesa_till:                   string
+  default_start_time:           string
+  default_end_time:             string
+  default_late_cutoff_time:     string
+  default_late_end_time:        string
 }
 
 const c = {
@@ -93,6 +97,10 @@ export default function BookingSettingsClient() {
     owner_whatsapp:               '',
     owner_email:                  '',
     mpesa_till:                   '',
+    default_start_time:           '09:00',
+    default_end_time:             '20:00',
+    default_late_cutoff_time:     '20:00',
+    default_late_end_time:        '22:00',
   })
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -106,7 +114,15 @@ export default function BookingSettingsClient() {
         return r.json()
       })
       .then(d => {
-        if (d?.settings) setSettings({ ...d.settings, mpesa_till: d.settings.mpesa_till ?? '' })
+        if (d?.settings) setSettings(prev => ({
+          ...prev,
+          ...d.settings,
+          mpesa_till:               d.settings.mpesa_till ?? '',
+          default_start_time:       d.settings.default_start_time ?? prev.default_start_time,
+          default_end_time:         d.settings.default_end_time ?? prev.default_end_time,
+          default_late_cutoff_time: d.settings.default_late_cutoff_time ?? '',
+          default_late_end_time:    d.settings.default_late_end_time ?? '',
+        }))
       })
       .catch(() => setError('Failed to load settings'))
       .finally(() => setLoading(false))
@@ -224,6 +240,33 @@ export default function BookingSettingsClient() {
             <Label>Late arrival grace period</Label>
             <Input value={settings.late_grace_minutes} onChange={v => set('late_grace_minutes', Number(v))} type="number" suffix="min" />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>Arrive later than this = no refund</p>
+          </div>
+        </SectionCard>
+
+        {/* Opening hours */}
+        <SectionCard
+          title="Opening hours"
+          description="Applies to every date. Override individual days per artist under Artist Schedules."
+        >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div>
+              <Label>Opens</Label>
+              <Input type="time" value={settings.default_start_time} onChange={v => set('default_start_time', v)} />
+            </div>
+            <div>
+              <Label>Normal hours end</Label>
+              <Input type="time" value={settings.default_end_time} onChange={v => set('default_end_time', v)} />
+            </div>
+            <div>
+              <Label>Late night starts</Label>
+              <Input type="time" value={settings.default_late_cutoff_time} onChange={v => set('default_late_cutoff_time', v)} />
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>Bookings from this time carry the surcharge and need your approval. Leave blank to switch late night off.</p>
+            </div>
+            <div>
+              <Label>Last booking starts</Label>
+              <Input type="time" value={settings.default_late_end_time} onChange={v => set('default_late_end_time', v)} />
+              <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>The latest an appointment may start. Long services will run past it.</p>
+            </div>
           </div>
         </SectionCard>
 

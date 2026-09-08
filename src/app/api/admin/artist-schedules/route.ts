@@ -5,6 +5,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/requireAdmin'
+import { getDefaultHours } from '@/lib/working-hours'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -44,12 +45,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'artistId and schedules are required' }, { status: 400 })
   }
 
+  const defaults = await getDefaultHours(supabase)
+
   // Upsert all schedules — insert or update based on artist_id + schedule_date
   const rows = schedules.map((s: any) => ({
     artist_id:        artistId,
     schedule_date:    s.schedule_date,
-    start_time:       s.start_time ?? '09:30',
-    end_time:         s.end_time ?? '19:00',
+    start_time:       s.start_time ?? defaults.start,
+    end_time:         s.end_time ?? defaults.end,
     late_cutoff_time: s.late_cutoff_time ?? null,
     late_end_time:    s.late_end_time ?? null,
     is_blocked:       s.is_blocked ?? false,

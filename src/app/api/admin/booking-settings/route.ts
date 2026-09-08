@@ -45,6 +45,10 @@ export async function PATCH(req: NextRequest) {
     owner_whatsapp,
     owner_email,
     mpesa_till,
+    default_start_time,
+    default_end_time,
+    default_late_cutoff_time,
+    default_late_end_time,
   } = body
 
   const base = {
@@ -58,17 +62,26 @@ export async function PATCH(req: NextRequest) {
     owner_email:                  owner_email?.trim() ?? null,
   }
 
+  const extras = {
+    mpesa_till:               mpesa_till?.trim() || null,
+    default_start_time:       default_start_time || null,
+    default_end_time:         default_end_time || null,
+    // Blank clears late-night entirely rather than falling back to a default.
+    default_late_cutoff_time: default_late_cutoff_time || null,
+    default_late_end_time:    default_late_end_time || null,
+  }
+
   const { error } = await supabase
     .from('booking_settings')
-    .update({ ...base, mpesa_till: mpesa_till?.trim() || null })
+    .update({ ...base, ...extras })
     .eq('id', 1)
 
   if (!error) {
     return NextResponse.json({ success: true, message: 'Settings saved' })
   }
 
-  // The mpesa_till column is new. Until the migration is applied, save
-  // everything else rather than failing the whole form.
+  // mpesa_till and the default_* hours are new columns. Until the migration is
+  // applied, save everything else rather than failing the whole form.
   const missingColumn = error.code === 'PGRST204' || error.code === '42703'
   if (!missingColumn) {
     return NextResponse.json({ error: 'Failed to save settings' }, { status: 500 })
@@ -85,6 +98,6 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json({
     success: true,
-    message: 'Settings saved, but the M-Pesa till was not stored — add the mpesa_till column to booking_settings.',
+    message: 'Settings saved, but the M-Pesa till and default hours were not stored — run the booking_settings migration.',
   })
 }

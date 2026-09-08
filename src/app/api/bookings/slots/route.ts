@@ -9,6 +9,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
+import { getDefaultHours, isLateStart, resolveHours, startBounds } from '@/lib/working-hours'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -168,6 +169,8 @@ export async function GET(req: NextRequest) {
     // has not yet flipped to 'expired'.
     const existingBookings = activeHolds(dayBookings)
 
+    const defaultHours = await getDefaultHours(supabase)
+
     // ── Specific artist mode ───────────────────────────────────────────────────
     if (!isAnyArtist) {
       const artist   = artists[0]
@@ -182,25 +185,22 @@ export async function GET(req: NextRequest) {
         } satisfies SlotsResponse)
       }
 
-      const dayStartMins   = timeToMins(schedule?.start_time      ?? '09:30')
-      const dayEndMins     = timeToMins(schedule?.end_time        ?? '19:00')
-      const lateCutoffMins = schedule?.late_cutoff_time ? timeToMins(schedule.late_cutoff_time) : null
-      const lateEndMins    = schedule?.late_end_time    ? timeToMins(schedule.late_end_time)    : null
-      const windowEnd      = lateEndMins ?? dayEndMins
-      const slotStep       = service.duration_minutes + (artist.buffer_minutes ?? 0)
+      const hours    = resolveHours(schedule, defaultHours)
+      const bounds   = startBounds(hours, service.duration_minutes)
+      const slotStep = service.duration_minutes + (artist.buffer_minutes ?? 0)
 
       const bookedRanges = (existingBookings ?? [])
         .filter(b => b.artist_id === artist.id)
         .map(b => ({ start: timeToMins(b.start_time), end: timeToMins(b.end_time) }))
 
       const slots: TimeSlot[] = []
-      let cursor = dayStartMins
+      let cursor = bounds.minStart
 
-      while (cursor + service.duration_minutes <= windowEnd) {
+      while (cursor <= bounds.maxStart) {
         const slotStart  = cursor
         const slotEnd    = cursor + slotStep
         const startStr   = minsToTime(slotStart)
-        const isLateNight = lateCutoffMins !== null && slotStart >= lateCutoffMins
+        const isLateNight = isLateStart(slotStart, bounds)
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
         if (slotStart <= earliestStartMins) { cursor += slotStep; continue }
@@ -234,23 +234,20 @@ export async function GET(req: NextRequest) {
       const schedule = schedules?.find(s => s.artist_id === artist.id)
       if (schedule?.is_blocked) continue
 
-      const dayStartMins   = timeToMins(schedule?.start_time      ?? '09:30')
-      const dayEndMins     = timeToMins(schedule?.end_time        ?? '19:00')
-      const lateCutoffMins = schedule?.late_cutoff_time ? timeToMins(schedule.late_cutoff_time) : null
-      const lateEndMins    = schedule?.late_end_time    ? timeToMins(schedule.late_end_time)    : null
-      const windowEnd      = lateEndMins ?? dayEndMins
-      const slotStep       = service.duration_minutes + (artist.buffer_minutes ?? 0)
+      const hours    = resolveHours(schedule, defaultHours)
+      const bounds   = startBounds(hours, service.duration_minutes)
+      const slotStep = service.duration_minutes + (artist.buffer_minutes ?? 0)
 
       const bookedRanges = (existingBookings ?? [])
         .filter(b => b.artist_id === artist.id)
         .map(b => ({ start: timeToMins(b.start_time), end: timeToMins(b.end_time) }))
 
-      let cursor = dayStartMins
-      while (cursor + service.duration_minutes <= windowEnd) {
+      let cursor = bounds.minStart
+      while (cursor <= bounds.maxStart) {
         const slotStart  = cursor
         const slotEnd    = cursor + slotStep
         const startStr   = minsToTime(slotStart)
-        const isLateNight = lateCutoffMins !== null && slotStart >= lateCutoffMins
+        const isLateNight = isLateStart(slotStart, bounds)
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
         if (!isTaken && slotStart > earliestStartMins) {

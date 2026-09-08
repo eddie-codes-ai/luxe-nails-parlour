@@ -165,13 +165,13 @@ function DayCard({
               <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: c.muted, fontFamily: fonts.body, marginBottom: 4 }}>
                 Opens
               </label>
-              <TimeSelect value={schedule.start_time} onChange={v => onUpdate({ ...schedule, start_time: v ?? '09:30' })} />
+              <TimeSelect value={schedule.start_time} onChange={v => onUpdate({ ...schedule, start_time: v ?? '09:00' })} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase' as const, color: c.muted, fontFamily: fonts.body, marginBottom: 4 }}>
                 Normal close
               </label>
-              <TimeSelect value={schedule.end_time} onChange={v => onUpdate({ ...schedule, end_time: v ?? '19:00' })} />
+              <TimeSelect value={schedule.end_time} onChange={v => onUpdate({ ...schedule, end_time: v ?? '20:00' })} />
             </div>
           </div>
 
@@ -251,8 +251,8 @@ export default function ArtistSchedulesClient() {
           map[date] = {
             artist_id:        selectedArtist.id,
             schedule_date:    date,
-            start_time:       '09:30',
-            end_time:         '19:00',
+            start_time:       '09:00',
+            end_time:         '20:00',
             late_cutoff_time: null,
             late_end_time:    null,
             is_blocked:       false,
@@ -389,8 +389,8 @@ export default function ArtistSchedulesClient() {
                 schedule={schedules[date] ?? {
                   artist_id: selectedArtist.id,
                   schedule_date: date,
-                  start_time: '09:30',
-                  end_time: '19:00',
+                  start_time: '09:00',
+                  end_time: '20:00',
                   late_cutoff_time: null,
                   late_end_time: null,
                   is_blocked: false,
