@@ -7,6 +7,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -84,10 +85,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'date must be YYYY-MM-DD' }, { status: 400 })
   }
 
-  const today = new Date(); today.setHours(0, 0, 0, 0)
-  if (new Date(date) < today) {
+  if (isPastDate(date)) {
     return NextResponse.json({ error: 'Cannot book slots in the past' }, { status: 400 })
   }
+
+  // On the current day, every slot that has already started is unbookable.
+  // Previously only past *dates* were rejected, so at 5pm you could still
+  // book this morning's 9:30 slot.
+  const earliestStartMins = isToday(date) ? salonNowMinutes() : -1
 
   const isAnyArtist = artistIdParam === 'any'
 
@@ -178,6 +183,8 @@ export async function GET(req: NextRequest) {
         const isLateNight = lateCutoffMins !== null && slotStart >= lateCutoffMins
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
+        if (slotStart <= earliestStartMins) { cursor += slotStep; continue }
+
         slots.push({
           start_time:   startStr,
           end_time:     minsToTime(slotEnd),
@@ -226,7 +233,7 @@ export async function GET(req: NextRequest) {
         const isLateNight = lateCutoffMins !== null && slotStart >= lateCutoffMins
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
-        if (!isTaken) {
+        if (!isTaken && slotStart > earliestStartMins) {
           const existing = slotMap.get(startStr)
           if (existing) {
             existing.availableArtistIds.push(artist.id)

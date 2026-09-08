@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js'
 import { sendEmail, OWNER_EMAIL } from '@/lib/resend'
 import { ownerNewBookingEmail, NewBookingEmailData } from '@/lib/email-templates'
 import { NextRequest, NextResponse } from 'next/server'
+import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -130,9 +131,10 @@ export async function POST(req: NextRequest) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(booking_date)) return NextResponse.json({ error: 'booking_date must be YYYY-MM-DD' }, { status: 400 })
   if (!/^\d{2}:\d{2}$/.test(start_time)) return NextResponse.json({ error: 'start_time must be HH:MM' }, { status: 400 })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  if (new Date(booking_date) < today) return NextResponse.json({ error: 'Cannot book slots in the past' }, { status: 400 })
+  if (isPastDate(booking_date)) return NextResponse.json({ error: 'Cannot book slots in the past' }, { status: 400 })
+  if (isToday(booking_date) && timeToMins(start_time) <= salonNowMinutes()) {
+    return NextResponse.json({ error: 'That time has already passed today. Please choose a later slot.' }, { status: 400 })
+  }
 
   try {
     const { data: service, error: serviceError } = await supabase

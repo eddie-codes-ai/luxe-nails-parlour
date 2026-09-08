@@ -15,18 +15,37 @@ const colors = {
   sand: "#E5E0D8",
 };
 
-const contactInfo = [
-  { icon: "📍", label: "Location", value: "Nairobi, Kenya", sub: "Mobile service available across Nairobi" },
-  { icon: "📞", label: "Phone & WhatsApp", value: "+254 712 345 678", sub: "Mon – Sat, 8:00 AM – 7:00 PM" },
-  { icon: "✉️", label: "Email", value: "hello@luxenailsparlour.co.ke", sub: "We reply within 24 hours" },
-  { icon: "🕐", label: "Working Hours", value: "Mon – Sat: 8AM – 7PM", sub: "Sunday: 10AM – 4PM" },
-];
+// Formats 254758550286 as +254 758 550 286
+function formatPhone(digits: string) {
+  const m = digits.match(/^(\d{3})(\d{3})(\d{3})(\d+)$/);
+  return m ? `+${m[1]} ${m[2]} ${m[3]} ${m[4]}` : `+${digits}`;
+}
+
+// The email row is deliberately absent: no mailbox exists yet, and listing one
+// that bounces is worse than not listing it. Add it back once it is live.
+function buildContactInfo(whatsapp: string | null) {
+  return [
+    { icon: "📍", label: "Location", value: "Thika Road, Juja", sub: "House calls available across Nairobi" },
+    ...(whatsapp
+      ? [{ icon: "📞", label: "Phone & WhatsApp", value: formatPhone(whatsapp), sub: "Mon – Sat, 8:00 AM – 7:00 PM" }]
+      : []),
+    { icon: "🕐", label: "Working Hours", value: "Mon – Sat: 8AM – 7PM", sub: "Sunday: 10AM – 4PM" },
+  ];
+}
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", phone: "", message: "" });
   const [submitted, setSubmitted] = useState(false);
   const [hoveredBtn, setHoveredBtn] = useState(false);
   const [isMobile, setIsMobile] = useState(true);
+  const [whatsapp, setWhatsapp] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/payment-info")
+      .then((r) => r.json())
+      .then((d) => setWhatsapp(d.whatsapp ?? null))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -39,6 +58,24 @@ export default function ContactPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const isValid = form.name && form.phone && form.message;
+
+  // Hands the enquiry to WhatsApp, the same way the shop checkout does. The
+  // form previously just flipped `submitted` and threw the message away.
+  const sendToWhatsApp = () => {
+    if (!isValid || !whatsapp) return;
+    const text =
+      `Hi LuxeNails! I have a question.
+
+` +
+      `👤 Name: ${form.name}
+` +
+      `📞 Phone: ${form.phone}
+
+` +
+      `${form.message}`;
+    window.open(`https://wa.me/${whatsapp}?text=${encodeURIComponent(text)}`, "_blank");
+    setSubmitted(true);
+  };
 
   const inputStyle = {
     width: "100%",
@@ -101,7 +138,7 @@ export default function ContactPage() {
 
             {/* Contact Cards */}
             <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginBottom: "40px" }}>
-              {contactInfo.map((item) => (
+              {buildContactInfo(whatsapp).map((item) => (
                 <div key={item.label} style={{ display: "flex", gap: "16px", alignItems: "flex-start", padding: "20px", backgroundColor: "#fff", border: `1px solid ${colors.sand}` }}>
                   <span style={{ fontSize: "1.4rem", lineHeight: 1 }}>{item.icon}</span>
                   <div>
@@ -140,9 +177,12 @@ export default function ContactPage() {
             {submitted ? (
               <div style={{ backgroundColor: "#fff", border: `1px solid ${colors.sand}`, padding: "48px 32px", textAlign: "center" }}>
                 <span style={{ fontSize: "2.5rem" }}>💌</span>
-                <h3 style={{ fontFamily: fonts.heading, fontSize: "1.8rem", fontWeight: 300, margin: "16px 0 8px" }}>Message Sent!</h3>
+                <h3 style={{ fontFamily: fonts.heading, fontSize: "1.8rem", fontWeight: 300, margin: "16px 0 8px" }}>Over to WhatsApp</h3>
                 <p style={{ fontSize: "0.88rem", opacity: 0.65, lineHeight: 1.7, marginBottom: "24px" }}>
-                  Thanks {form.name.split(" ")[0]}, we've received your message and will get back to you on <strong>{form.phone}</strong> shortly.
+                  Thanks {form.name.split(" ")[0]} — we&apos;ve opened WhatsApp with your message ready to go.
+                  Tap send there and we&apos;ll reply on <strong>{form.phone}</strong>.
+                  If nothing opened, message us directly on{" "}
+                  {whatsapp ? <a href={`https://wa.me/${whatsapp}`} style={{ color: colors.gold }}>{formatPhone(whatsapp)}</a> : "WhatsApp"}.
                 </p>
                 <button
                   onClick={() => { setSubmitted(false); setForm({ name: "", phone: "", message: "" }); }}
@@ -166,10 +206,10 @@ export default function ContactPage() {
                   <textarea style={{ ...inputStyle, minHeight: "140px", resize: "vertical" }} placeholder="Ask us anything — services, pricing, mobile bookings..." value={form.message} onChange={(e) => update("message", e.target.value)} />
                 </div>
                 <button
-                  onClick={() => isValid && setSubmitted(true)}
+                  onClick={sendToWhatsApp}
                   onMouseEnter={() => setHoveredBtn(true)}
                   onMouseLeave={() => setHoveredBtn(false)}
-                  disabled={!isValid}
+                  disabled={!isValid || !whatsapp}
                   style={{
                     padding: "15px",
                     backgroundColor: !isValid ? colors.sand : hoveredBtn ? colors.espresso : colors.gold,
@@ -185,7 +225,7 @@ export default function ContactPage() {
                     transition: "all 0.25s",
                   }}
                 >
-                  Send Message →
+                  {whatsapp ? "Send via WhatsApp →" : "Loading…"}
                 </button>
               </div>
             )}
