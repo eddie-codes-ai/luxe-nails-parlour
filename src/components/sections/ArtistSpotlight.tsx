@@ -1,53 +1,55 @@
-// Server component. Was "use client" solely for a resize listener feeding 6
-// isMobile branches; all of them are now md: classes.
+// Server component reading the real roster.
+//
+// This used to render a hardcoded array of five invented artists — Amara Osei,
+// Zuri Kamau, Fatima Hassan, Njeri Mwangi, Aisha Wanjiku — none of whom exist
+// in the database and none of whom could be booked. The homepage now shows the
+// people you can actually book.
 
 import Link from "next/link";
+import { createClient } from "@supabase/supabase-js";
 
-const artistsData = [
-  {
-    id: "amara",
-    name: "Amara Osei",
-    title: "Lead Nail Artist & Founder",
-    bio: "With over 8 years of experience, Amara is the creative force behind Luxe Nails Parlour.",
-    specialties: ["Bridal Nails", "Nail Art", "Acrylic Extensions"],
-    available_mobile: true,
-  },
-  {
-    id: "zuri",
-    name: "Zuri Kamau",
-    title: "Gel & Enhancement Specialist",
-    bio: "Zuri's precision and attention to detail make her the go-to artist for long-lasting gel manicures.",
-    specialties: ["Gel Manicure", "Acrylic Tips", "Chrome Finishes"],
-    available_mobile: false,
-  },
-  {
-    id: "fatima",
-    name: "Fatima Hassan",
-    title: "Nail Art & Design Expert",
-    bio: "Fatima turns nails into tiny masterpieces — from minimalist florals to bold geometric designs.",
-    specialties: ["Custom Nail Art", "3D Embellishments", "Foil Effects"],
-    available_mobile: true,
-  },
-  {
-    id: "njeri",
-    name: "Njeri Mwangi",
-    title: "Pedicure & Wellness Specialist",
-    bio: "Njeri believes self-care starts from the ground up.",
-    specialties: ["Luxury Pedicure", "Hot Stone Massage", "Paraffin Treatments"],
-    available_mobile: false,
-  },
-  {
-    id: "aisha",
-    name: "Aisha Wanjiku",
-    title: "Classic & Mobile Nail Technician",
-    bio: "Aisha is our mobile service champion — bringing the full Luxe Nails experience to your home or office.",
-    specialties: ["Classic Manicure", "Mobile Services", "Gel Polish"],
-    available_mobile: true,
-  },
-];
+interface Artist {
+  id: number;
+  name: string;
+  role: string | null;
+  services: string | null;
+  mobile_available: boolean | null;
+  photo_url: string | null;
+}
 
-export default function ArtistSpotlight() {
-  const featured = artistsData.slice(0, 3);
+async function getArtists(): Promise<Artist[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY;
+  if (!url || !key) return [];
+
+  const { data, error } = await createClient(url, key)
+    .from("artists")
+    .select("id, name, role, services, mobile_available, photo_url")
+    .order("id");
+
+  if (error) {
+    console.error("[ArtistSpotlight] failed to load artists:", error.message);
+    return [];
+  }
+  return data ?? [];
+}
+
+/** "Gel Polish, Nail Art, Classic Manicure" → first two, for the pills. */
+function specialtiesOf(artist: Artist): string[] {
+  return (artist.services ?? "")
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+}
+
+export default async function ArtistSpotlight() {
+  const artists = await getArtists();
+
+  // A homepage section advertising nobody is worse than no section.
+  if (artists.length === 0) return null;
+
+  const featured = artists.slice(0, 3);
 
   return (
     /* #F5EFE6 is not one of the brand tokens, so it stays an explicit value
@@ -78,15 +80,23 @@ export default function ArtistSpotlight() {
           {featured.map((artist) => (
             <div key={artist.id} className="relative">
 
-              {/* Image placeholder */}
               <div className="relative mb-6 flex aspect-[4/3] items-center justify-center overflow-hidden bg-sand md:aspect-[3/4]">
-                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gold/20">
-                  <span className="font-heading text-4xl text-gold">
-                    {artist.name.charAt(0)}
-                  </span>
-                </div>
+                {artist.photo_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={artist.photo_url}
+                    alt={artist.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gold/20">
+                    <span className="font-heading text-4xl text-gold">
+                      {artist.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                )}
 
-                {artist.available_mobile && (
+                {artist.mobile_available && (
                   <div className="absolute left-4 top-4 bg-gold px-3 py-1">
                     <span className="font-body text-[10px] uppercase tracking-[0.2em] text-white">
                       Mobile
@@ -99,12 +109,14 @@ export default function ArtistSpotlight() {
                 {artist.name}
               </h3>
 
-              <p className="mb-4 font-body text-[11px] uppercase tracking-[0.15em] text-gold">
-                {artist.title}
-              </p>
+              {artist.role && (
+                <p className="mb-4 font-body text-[11px] uppercase tracking-[0.15em] text-gold">
+                  {artist.role}
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
-                {artist.specialties.slice(0, 2).map((specialty) => (
+                {specialtiesOf(artist).map((specialty) => (
                   <span
                     key={specialty}
                     className="border border-espresso/20 px-3 py-1 font-body text-[10px] uppercase tracking-[0.1em] text-espresso/50"
@@ -123,7 +135,7 @@ export default function ArtistSpotlight() {
             href="/artists"
             className="inline-block bg-espresso px-10 py-4 font-body text-[13px] uppercase tracking-[0.2em] text-cream no-underline transition-colors hover:bg-gold hover:text-espresso"
           >
-            Meet All {artistsData.length} Artists
+            Meet All {artists.length} Artists
           </Link>
         </div>
 

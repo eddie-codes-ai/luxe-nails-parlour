@@ -6,6 +6,11 @@ import ArtistSpotlight from "@/components/sections/ArtistSpotlight";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://luxe-nails-parlour.vercel.app";
 
+// ArtistSpotlight reads the roster from the database. Rebuilding every 5
+// minutes keeps the page served from cache while picking up roster changes,
+// rather than hitting Supabase on every visit.
+export const revalidate = 300;
+
 export const metadata: Metadata = {
   title: "Luxe Nails Parlour | Where Elegance Meets Nail Art",
   description:
