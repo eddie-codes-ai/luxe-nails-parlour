@@ -14,20 +14,6 @@ interface GalleryImage {
   design_group: string;
 }
 
-const placeholders = [
-  { id: "p1", category: "Acrylic Nails", title: "Classic French Acrylic", color: "#E8DDD0" },
-  { id: "p2", category: "Nail Art", title: "Floral Hand-Painted", color: "#D4C5B8" },
-  { id: "p3", category: "Nail Art", title: "Rose Gold Chrome Set", color: "#C9A882" },
-  { id: "p4", category: "Gel Nails", title: "Deep Burgundy Gel", color: "#6B3A3A" },
-  { id: "p5", category: "Ombre & Gradients", title: "Nude to Blush Ombre", color: "#E2C4B8" },
-  { id: "p6", category: "Acrylic Nails", title: "Stiletto Acrylic Set", color: "#F0E6D8" },
-  { id: "p7", category: "Nail Art", title: "Minimalist Line Art", color: "#E5E0D8" },
-  { id: "p8", category: "French Tips", title: "Silver Mirror Chrome", color: "#C8C8C8" },
-  { id: "p9", category: "Gel Nails", title: "Nude Beige Gel", color: "#D9C4A8" },
-  { id: "p10", category: "Ombre & Gradients", title: "White to Gold Ombre", color: "#E8D5A0" },
-  { id: "p11", category: "Acrylic Nails", title: "Almond Acrylic Nude", color: "#DDBFA0" },
-  { id: "p12", category: "Nail Art", title: "Abstract Gold Art", color: "#C5A358" },
-];
 
 const fonts = {
   heading: "'Cormorant Garamond', Georgia, serif",
@@ -41,7 +27,6 @@ const colors = {
   sand: "#E5E0D8",
 };
 
-const CATEGORIES = ["All", "Gel Nails", "Acrylic Nails", "Nail Art", "Pedicure", "Ombre & Gradients", "French Tips"];
 
 export default function GalleryPage() {
   const [images, setImages] = useState<GalleryImage[]>([]);
@@ -71,17 +56,17 @@ export default function GalleryPage() {
     return () => { document.body.style.overflow = ""; };
   }, [lightboxImage]);
 
+  // Tabs are derived from the photos we actually have, so a category can
+  // never advertise work that does not exist. Uploading a photo in a new
+  // category makes its tab appear on its own.
+  const CATEGORIES = [
+    "All",
+    ...Array.from(new Set(images.map(img => img.category).filter(Boolean))).sort(),
+  ];
+
   const filteredReal = activeCategory === "All"
     ? images
     : images.filter(img => img.category === activeCategory);
-
-  const filteredPlaceholders = activeCategory === "All"
-    ? placeholders
-    : placeholders.filter(p => p.category === activeCategory);
-
-  const placeholdersToShow = filteredPlaceholders.slice(
-    Math.min(filteredReal.length, filteredPlaceholders.length)
-  );
 
   // Get related photos — same design_group OR same category if no group
   const relatedImages = lightboxImage
@@ -232,6 +217,23 @@ export default function GalleryPage() {
           <div style={{ textAlign: "center", padding: "80px 0" }}>
             <p style={{ fontSize: "14px", color: "rgba(45,36,36,0.4)" }}>Loading gallery...</p>
           </div>
+        ) : filteredReal.length === 0 ? (
+          /* An honest empty state. The grid used to be padded with invented
+             work ("Rose Gold Chrome Set" and friends) that the salon had never
+             done - better to show nothing than to imply a portfolio. */
+          <div style={{ textAlign: "center", padding: "80px 24px" }}>
+            <span style={{ fontSize: "2.5rem", opacity: 0.35 }}>💅</span>
+            <p style={{ fontFamily: fonts.heading, fontSize: "1.5rem", fontWeight: 300, margin: "16px 0 8px" }}>
+              No photos here yet
+            </p>
+            <p style={{ fontSize: "0.9rem", opacity: 0.55, maxWidth: "380px", margin: "0 auto 28px", lineHeight: 1.7 }}>
+              We haven&apos;t added photos to this category yet. Ask us about it when you
+              book &mdash; we&apos;d love to create something for you.
+            </p>
+            <Link href="/booking" style={{ display: "inline-block", backgroundColor: colors.gold, color: colors.espresso, padding: "13px 34px", fontSize: "0.78rem", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", textDecoration: "none" }}>
+              Book an Appointment
+            </Link>
+          </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
 
@@ -278,42 +280,6 @@ export default function GalleryPage() {
               );
             })}
 
-            {/* Placeholders */}
-            {placeholdersToShow.map(placeholder => {
-              const isHovered = hoveredItem === placeholder.id;
-              return (
-                <div
-                  key={placeholder.id}
-                  onMouseEnter={() => setHoveredItem(placeholder.id)}
-                  onMouseLeave={() => setHoveredItem(null)}
-                  style={{ position: "relative", overflow: "hidden", aspectRatio: "1 / 1", backgroundColor: placeholder.color }}
-                >
-                  <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
-                    <span style={{ fontSize: "2.5rem" }}>💅</span>
-                    <p style={{ fontFamily: fonts.heading, fontSize: "1rem", color: colors.espresso, opacity: 0.4, textAlign: "center", padding: "0 16px" }}>
-                      Photo Coming Soon
-                    </p>
-                  </div>
-                  <div style={{
-                    position: "absolute", inset: 0,
-                    backgroundColor: isHovered ? "rgba(45,36,36,0.85)" : "rgba(45,36,36,0)",
-                    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                    padding: "20px", transition: "background-color 0.3s ease",
-                  }}>
-                    {isHovered && (
-                      <>
-                        <p style={{ fontSize: "0.65rem", letterSpacing: "0.2em", textTransform: "uppercase", color: colors.gold, fontWeight: 700, marginBottom: "8px" }}>
-                          {placeholder.category}
-                        </p>
-                        <h3 style={{ fontFamily: fonts.heading, fontSize: "1.4rem", fontWeight: 400, color: colors.cream, textAlign: "center", margin: 0 }}>
-                          {placeholder.title}
-                        </h3>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
       </section>
