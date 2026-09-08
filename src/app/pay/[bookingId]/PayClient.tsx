@@ -1,6 +1,7 @@
 'use client'
 
 import type { PaymentSettings } from '@/lib/payment-settings'
+import SelectServiceClient from './SelectServiceClient'
 
 import { useState } from 'react'
 import Link from 'next/link'
@@ -29,6 +30,8 @@ interface Booking {
 interface Props {
   booking: Booking
   payment: PaymentSettings
+  /** Owner-created booking whose service the customer may still choose. */
+  selectable?: boolean
 }
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
@@ -73,7 +76,7 @@ function kes(n: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PayClient({ booking, payment }: Props) {
+export default function PayClient({ booking, payment, selectable = false }: Props) {
   const [mpesaRef, setMpesaRef]     = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted]   = useState(false)
@@ -273,6 +276,8 @@ export default function PayClient({ booking, payment }: Props) {
             </p>
           </div>
         </div>
+
+        {selectable && <SelectServiceClient bookingId={booking.id} />}
 
         {/* ── M-Pesa Instructions ── */}
         <div style={{ background: '#fff', border: `1px solid ${colors.sand}`, borderRadius: '6px', padding: '24px', marginBottom: '20px' }}>

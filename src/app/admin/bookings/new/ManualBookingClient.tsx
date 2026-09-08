@@ -177,7 +177,7 @@ export default function ManualBookingClient() {
   function openWhatsApp() {
     if (!createdBooking) return
     const url  = `${SITE_URL}/pay/${createdBooking.id}`
-    const msg  = `Hi ${createdBooking.customerName.split(' ')[0]} 👋\n\nThank you for booking with Luxe Nails Parlour!\n\nTo confirm your appointment, please pay your deposit of KSh ${Number(createdBooking.depositAmount).toLocaleString()} via the link below:\n\n${url}\n\nThe link has step-by-step M-Pesa instructions. Let me know once done! 💅`
+    const msg  = `Hi ${createdBooking.customerName.split(' ')[0]} 👋\n\nThank you for booking with Luxe Nails Parlour!\n\nOpen the link below to choose your service and any extras, then pay your deposit to confirm:\n\n${url}\n\nOnly services that fit your reserved time are shown, and the deposit updates as you choose. Step-by-step M-Pesa instructions are on the page. Let me know once done! 💅`
 
     // Normalise phone: strip leading 0 and add 254 country code
     const rawPhone  = createdBooking.customerPhone.replace(/[\s\-]/g, '')

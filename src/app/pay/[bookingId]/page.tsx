@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import PayClient from './PayClient'
 import { getPaymentSettings } from '@/lib/payment-settings'
+import { holdsSlot } from '@/lib/booking-holds'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,6 +29,8 @@ interface BookingRow {
   deposit_amount: number
   is_late_night: boolean
   status: string
+  booking_source: string | null
+  expires_at: string | null
   deposit_mpesa_ref: string | null
   services: { name: string } | null
   artists: { name: string } | null
@@ -50,6 +53,8 @@ async function getBooking(id: string): Promise<BookingRow | null> {
       deposit_amount,
       is_late_night,
       status,
+      booking_source,
+      expires_at,
       deposit_mpesa_ref,
       services ( name ),
       artists ( name )
@@ -81,5 +86,13 @@ export default async function PayPage({
   ])
 
   if (!booking) notFound()
-  return <PayClient booking={booking} payment={payment} />
+
+  // Bookings the owner took over WhatsApp let the customer pick their own
+  // service and add-ons, right up until they pay.
+  const selectable =
+    booking.booking_source !== 'website' &&
+    ['pending_payment', 'pending_approval'].includes(booking.status) &&
+    holdsSlot(booking)
+
+  return <PayClient booking={booking} payment={payment} selectable={selectable} />
 }

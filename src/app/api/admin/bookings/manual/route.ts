@@ -142,16 +142,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create booking' }, { status: 500 })
   }
 
-  // If payment link — send WhatsApp/email to customer (future enhancement)
-  // For now just return the booking with the pay URL
-  const payUrl = `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxenailsparlour.vercel.app'}/booking/cancel?id=${booking.id}`
-
   return NextResponse.json({
     success:        true,
     booking,
     deposit_amount: depositAmount,
     pay_url:        deposit_collection === 'payment_link'
-      ? `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxenailsparlour.vercel.app'}/pay/${booking.id}`
+      ? `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://luxe-nails-parlour.vercel.app'}/pay/${booking.id}`
       : null,
     message: deposit_collection === 'collected_offline'
       ? 'Booking confirmed — deposit marked as collected.'
