@@ -11,6 +11,7 @@ import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
 import { getDefaultHours, isLateStart, resolveHours, startBounds } from '@/lib/working-hours'
 import { checkStaffing, getMinStorefrontStaff } from '@/lib/staffing'
+import { bookable } from '@/lib/artist-availability'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -116,11 +117,13 @@ export async function GET(req: NextRequest) {
     let artists: { id: number; name: string; buffer_minutes: number }[] = []
 
     if (isAnyArtist) {
-      let query = supabase.from('artists').select('id, name, buffer_minutes')
+      let query = supabase.from('artists').select('id, name, buffer_minutes, unavailable_since')
       // House calls can only be served by artists flagged as mobile.
       if (houseCall) query = query.eq('mobile_available', true)
 
-      const { data, error } = await query
+      const { data: raw, error } = await query
+      // Artists marked "out on a house call" cannot take bookings today.
+      const data = bookable(raw ?? [], date)
       if (error || !data?.length) {
         return NextResponse.json({
           error: houseCall
@@ -132,11 +135,19 @@ export async function GET(req: NextRequest) {
     } else {
       const { data, error } = await supabase
         .from('artists')
-        .select('id, name, buffer_minutes, mobile_available')
+        .select('id, name, buffer_minutes, mobile_available, unavailable_since')
         .eq('id', Number(artistIdParam))
         .single()
       if (error || !data) {
         return NextResponse.json({ error: 'Artist not found' }, { status: 404 })
+      }
+      if (!bookable([data], date).length) {
+        return NextResponse.json({
+          slots: [], artist_name: data.name,
+          service_name: '', service_duration: 0,
+          date, is_artist_available: false,
+          message: `${data.name} is out on a house call today and cannot take new bookings.`,
+        }, { status: 200 })
       }
       if (houseCall && !data.mobile_available) {
         return NextResponse.json({
@@ -173,12 +184,12 @@ export async function GET(req: NextRequest) {
     const defaultHours = await getDefaultHours(supabase)
 
     // docs/04 §3 — a house call must leave someone at the storefront.
-    let roster: { id: number }[] = []
+    let roster: { id: number; unavailable_since?: string | null }[] = []
     let rosterSchedules: { artist_id: number }[] | null = null
     let minStorefrontStaff = 1
     if (houseCall) {
       minStorefrontStaff = await getMinStorefrontStaff(supabase)
-      const { data: r } = await supabase.from('artists').select('id')
+      const { data: r } = await supabase.from('artists').select('id, unavailable_since')
       roster = r ?? []
       const { data: rs } = await supabase
         .from('artist_schedules').select('*')
@@ -190,6 +201,7 @@ export async function GET(req: NextRequest) {
     const storefrontCovered = (slotStart: number, slotEnd: number) =>
       !houseCall || checkStaffing({
         allArtists: roster,
+        bookingDate: date,
         schedules: rosterSchedules as never,
         defaultHours,
         dayBookings: dayBookings as never,

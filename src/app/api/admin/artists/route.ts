@@ -27,10 +27,11 @@ export async function POST(req: Request) {
   if (denied) return denied;
 
   const body = await req.json();
-  const { name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url } = body;
+  const { name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url, buffer_minutes } = body;
 
   const { error } = await supabase.from("artists").insert([{
     name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url,
+    buffer_minutes: Number(buffer_minutes ?? 10),
   }]);
 
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });
@@ -43,10 +44,11 @@ export async function PUT(req: Request) {
   if (denied) return denied;
 
   const body = await req.json();
-  const { id, name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url } = body;
+  const { id, name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url, buffer_minutes } = body;
 
   const { error } = await supabase.from("artists").update({
     name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url,
+    buffer_minutes: Number(buffer_minutes ?? 10),
   }).eq("id", id);
 
   if (error) return NextResponse.json({ success: false, error: error.message }, { status: 500 });

@@ -7,6 +7,7 @@ import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
 import { getDefaultHours, isLateStart, resolveHours, startBounds, type WorkingHours } from '@/lib/working-hours'
 import { checkStaffing } from '@/lib/staffing'
+import { bookable, isOut } from '@/lib/artist-availability'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -186,8 +187,15 @@ export async function POST(req: NextRequest) {
 
     if (artist_id) {
       const { data, error: artistError } = await supabase
-        .from('artists').select('id, name, buffer_minutes, mobile_available').eq('id', artist_id).single()
+        .from('artists').select('id, name, buffer_minutes, mobile_available, unavailable_since').eq('id', artist_id).single()
       if (artistError || !data) return NextResponse.json({ error: 'Artist not found' }, { status: 404 })
+
+      if (isOut(data, booking_date)) {
+        return NextResponse.json(
+          { error: `${data.name} is out on a house call today. Please choose another artist or another day.` },
+          { status: 409 }
+        )
+      }
 
       // Availability used to be gated on the service alone, so a
       // storefront-only artist could be booked for a house call.
@@ -199,10 +207,11 @@ export async function POST(req: NextRequest) {
       }
       artistPool = [data]
     } else {
-      let query = supabase.from('artists').select('id, name, buffer_minutes, mobile_available')
+      let query = supabase.from('artists').select('id, name, buffer_minutes, mobile_available, unavailable_since')
       if (isHouseCall) query = query.eq('mobile_available', true)
 
-      const { data, error: artistsError } = await query
+      const { data: raw, error: artistsError } = await query
+      const data = bookable(raw ?? [], booking_date)
       if (artistsError || !data?.length) {
         return NextResponse.json({
           error: isHouseCall
@@ -284,7 +293,7 @@ export async function POST(req: NextRequest) {
 
     // docs/04 §3 — a house call must not leave the storefront unstaffed.
     if (isHouseCall) {
-      const { data: roster } = await supabase.from('artists').select('id')
+      const { data: roster } = await supabase.from('artists').select('id, unavailable_since')
       const { data: rosterSchedules } = await supabase
         .from('artist_schedules').select('*')
         .in('artist_id', (roster ?? []).map(a => a.id))
@@ -292,6 +301,7 @@ export async function POST(req: NextRequest) {
 
       const staffing = checkStaffing({
         allArtists: roster ?? [],
+        bookingDate: booking_date,
         schedules: rosterSchedules,
         defaultHours,
         dayBookings: bookingsOnDay,
