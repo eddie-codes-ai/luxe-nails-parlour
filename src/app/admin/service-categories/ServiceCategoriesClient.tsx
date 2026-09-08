@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 interface ServiceCategory {
   id: number;
@@ -21,7 +22,7 @@ export default function ServiceCategoriesClient() {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/service-categories");
+    const res = await adminFetch("/api/admin/service-categories");
     const data = await res.json();
     setCategories(data.categories || []);
     setLoading(false);
@@ -36,7 +37,7 @@ export default function ServiceCategoriesClient() {
     }
     setSaving(true);
     setError("");
-    const res = await fetch("/api/admin/service-categories", {
+    const res = await adminFetch("/api/admin/service-categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim() }),
@@ -58,7 +59,7 @@ export default function ServiceCategoriesClient() {
       `Delete "${name}"?\n\nServices using this category will keep it, but it won't appear in the dropdown when adding new services.`
     )) return;
     setDeletingId(id);
-    const res = await fetch("/api/admin/service-categories", {
+    const res = await adminFetch("/api/admin/service-categories", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),

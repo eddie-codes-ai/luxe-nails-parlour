@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 interface Product {
   id?: string;
@@ -50,14 +51,14 @@ export default function AdminProducts() {
 
   const fetchProducts = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/products");
+    const res = await adminFetch("/api/admin/products");
     const data = await res.json();
     setProducts(data.products || []);
     setLoading(false);
   };
 
   const fetchCategories = async () => {
-    const res = await fetch("/api/admin/categories");
+    const res = await adminFetch("/api/admin/categories");
     const data = await res.json();
     setCategories(data.categories || []);
   };
@@ -104,7 +105,7 @@ export default function AdminProducts() {
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/admin/gallery", { method: "PATCH", body: formData });
+    const res = await adminFetch("/api/admin/gallery", { method: "PATCH", body: formData });
     const data = await res.json();
     if (data.success) {
       setForm(prev => ({ ...prev, image_url: data.url }));
@@ -124,7 +125,7 @@ export default function AdminProducts() {
     setError("");
     const method = editingProduct?.id ? "PUT" : "POST";
     const body = editingProduct?.id ? { ...form, id: editingProduct.id } : form;
-    const res = await fetch("/api/admin/products", {
+    const res = await adminFetch("/api/admin/products", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -147,7 +148,7 @@ export default function AdminProducts() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     setDeletingId(id);
-    const res = await fetch("/api/admin/products", {
+    const res = await adminFetch("/api/admin/products", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),

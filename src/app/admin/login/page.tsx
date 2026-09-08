@@ -27,7 +27,11 @@ export default function AdminLoginPage() {
     setLoading(false);
 
     if (res.ok) {
-      router.push("/admin");
+      // Return to the page the session expired on, if there was one. Read at
+      // click time rather than via useSearchParams, which would force this
+      // statically prerendered page into a Suspense boundary.
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next?.startsWith("/admin") ? next : "/admin");
     } else {
       setError("Incorrect email or password. Please try again.");
     }

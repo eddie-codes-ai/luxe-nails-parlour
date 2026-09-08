@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { adminFetch } from "@/lib/adminFetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -227,7 +228,7 @@ export default function ArtistSchedulesClient() {
 
   // ── Load artists ─────────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/artists')
+    adminFetch('/api/artists')
       .then(r => r.json())
       .then(d => {
         setArtists(d.artists ?? [])
@@ -242,7 +243,7 @@ export default function ArtistSchedulesClient() {
     if (!selectedArtist) return
     setLoading(true)
 
-    fetch(`/api/admin/artist-schedules?artistId=${selectedArtist.id}`)
+    adminFetch(`/api/admin/artist-schedules?artistId=${selectedArtist.id}`)
       .then(r => r.json())
       .then(d => {
         const map: Record<string, Schedule> = {}
@@ -278,7 +279,7 @@ export default function ArtistSchedulesClient() {
     setSaving(true)
     setError('')
     try {
-      const res = await fetch('/api/admin/artist-schedules', {
+      const res = await adminFetch('/api/admin/artist-schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

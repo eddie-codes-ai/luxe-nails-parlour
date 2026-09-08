@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { adminFetch } from "@/lib/adminFetch";
 
 interface BookingSettings {
   deposit_percent:              number
@@ -108,7 +109,7 @@ export default function BookingSettingsClient() {
   const [error, setError]       = useState('')
 
   useEffect(() => {
-    fetch('/api/admin/booking-settings')
+    adminFetch('/api/admin/booking-settings')
       .then(r => {
         if (r.status === 401) { router.push('/admin/login'); return null }
         return r.json()
@@ -133,7 +134,7 @@ export default function BookingSettingsClient() {
     setError('')
     setSaved(false)
     try {
-      const res = await fetch('/api/admin/booking-settings', {
+      const res = await adminFetch('/api/admin/booking-settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),

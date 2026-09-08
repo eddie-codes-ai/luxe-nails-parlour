@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { adminFetch } from "@/lib/adminFetch";
 
 const INACTIVITY_LIMIT = 29 * 60 * 1000;
 const WARNING_DURATION = 60 * 1000;
@@ -20,7 +21,7 @@ export default function AdminDashboard() {
 
   const logout = useCallback(async () => {
     setSigningOut(true);
-    await fetch("/api/admin-logout", { method: "POST" });
+    await adminFetch("/api/admin-logout", { method: "POST" });
     window.location.replace("/admin/login");
   }, []);
 
@@ -65,7 +66,7 @@ export default function AdminDashboard() {
   const handleLogout = async () => {
     clearAllTimers();
     setSigningOut(true);
-    await fetch("/api/admin-logout", { method: "POST" });
+    await adminFetch("/api/admin-logout", { method: "POST" });
     window.location.replace("/admin/login");
   };
 

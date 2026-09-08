@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,14 +154,14 @@ export default function ServicesClient() {
 
   const fetchServices = async () => {
     setLoading(true);
-    const res  = await fetch("/api/admin/services");
+    const res  = await adminFetch("/api/admin/services");
     const data = await res.json();
     setServices(data.services || []);
     setLoading(false);
   };
 
   const fetchServiceCategories = async () => {
-    const res  = await fetch("/api/admin/service-categories");
+    const res  = await adminFetch("/api/admin/service-categories");
     const data = await res.json();
     setServiceCategories(data.categories || []);
   };
@@ -224,7 +225,7 @@ export default function ServicesClient() {
     const method = editingService?.id ? "PUT" : "POST";
     const body   = editingService?.id ? { ...cleanedForm, id: editingService.id } : cleanedForm;
 
-    const res  = await fetch("/api/admin/services", {
+    const res  = await adminFetch("/api/admin/services", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -249,7 +250,7 @@ export default function ServicesClient() {
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`Delete "${name}"?\n\nExisting bookings will keep their service name, but this service will no longer appear in the booking form.`)) return;
     setDeletingId(id);
-    const res  = await fetch("/api/admin/services", {
+    const res  = await adminFetch("/api/admin/services", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
@@ -265,7 +266,7 @@ export default function ServicesClient() {
   const handleToggleActive = async (service: Service) => {
     if (!service.id) return;
     setTogglingId(service.id);
-    const res  = await fetch("/api/admin/services", {
+    const res  = await adminFetch("/api/admin/services", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...service, id: service.id, is_active: !service.is_active }),

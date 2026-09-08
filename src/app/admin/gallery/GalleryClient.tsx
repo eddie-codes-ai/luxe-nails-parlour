@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 interface GalleryImage {
   id?: number;
@@ -54,7 +55,7 @@ export default function AdminGallery() {
 
   const fetchImages = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/gallery");
+    const res = await adminFetch("/api/admin/gallery");
     const data = await res.json();
     setImages(data.images || []);
     setLoading(false);
@@ -102,7 +103,7 @@ export default function AdminGallery() {
     setUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-    const res = await fetch("/api/admin/gallery", { method: "PATCH", body: formData });
+    const res = await adminFetch("/api/admin/gallery", { method: "PATCH", body: formData });
     const data = await res.json();
     if (data.success) {
       setForm(prev => ({ ...prev, image_url: data.url }));
@@ -122,7 +123,7 @@ export default function AdminGallery() {
     setError("");
     const method = editingImage?.id ? "PUT" : "POST";
     const body = editingImage?.id ? { ...form, id: editingImage.id } : form;
-    const res = await fetch("/api/admin/gallery", {
+    const res = await adminFetch("/api/admin/gallery", {
       method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
@@ -146,7 +147,7 @@ export default function AdminGallery() {
   const handleDelete = async (id: number, imageUrl: string) => {
     if (!confirm("Are you sure you want to delete this photo?")) return;
     setDeletingId(id);
-    const res = await fetch("/api/admin/gallery", {
+    const res = await adminFetch("/api/admin/gallery", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, image_url: imageUrl }),

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 interface Category {
   id: number;
@@ -21,7 +22,7 @@ export default function AdminCategories() {
 
   const fetchCategories = async () => {
     setLoading(true);
-    const res = await fetch("/api/admin/categories");
+    const res = await adminFetch("/api/admin/categories");
     const data = await res.json();
     setCategories(data.categories || []);
     setLoading(false);
@@ -36,7 +37,7 @@ export default function AdminCategories() {
     }
     setSaving(true);
     setError("");
-    const res = await fetch("/api/admin/categories", {
+    const res = await adminFetch("/api/admin/categories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: newName.trim() }),
@@ -56,7 +57,7 @@ export default function AdminCategories() {
   const handleDelete = async (id: number, name: string) => {
     if (!confirm(`Delete "${name}"? Products using this category will keep it but it won't appear in the dropdown.`)) return;
     setDeletingId(id);
-    const res = await fetch("/api/admin/categories", {
+    const res = await adminFetch("/api/admin/categories", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),

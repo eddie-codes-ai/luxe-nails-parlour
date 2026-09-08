@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { adminFetch } from "@/lib/adminFetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -312,7 +313,7 @@ export default function BookingsClient() {
   const fetchBookings = useCallback(async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/bookings')
+      const res = await adminFetch('/api/admin/bookings')
       if (res.status === 401) { router.push('/admin/login'); return }
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Failed to load bookings'); return }
@@ -329,7 +330,7 @@ export default function BookingsClient() {
   async function handleAction(action: string, bookingId: string, notes?: string) {
     setActionLoading(bookingId)
     try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}/${action}`, {
+      const res = await adminFetch(`/api/admin/bookings/${bookingId}/${action}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ admin_notes: notes }),

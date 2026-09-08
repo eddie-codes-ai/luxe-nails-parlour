@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { adminFetch } from "@/lib/adminFetch";
 
 export default function SettingsClient() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function SettingsClient() {
 
     setSaving(true);
 
-    const res = await fetch("/api/admin/settings", {
+    const res = await adminFetch("/api/admin/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currentPassword, newPassword }),

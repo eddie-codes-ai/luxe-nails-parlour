@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { adminFetch } from "@/lib/adminFetch";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -100,8 +101,8 @@ export default function ManualBookingClient() {
 
   // ── Load services + artists ──────────────────────────────────────────────────
   useEffect(() => {
-    fetch('/api/services').then(r => r.json()).then(d => setServices(d.services ?? []))
-    fetch('/api/artists').then(r => r.json()).then(d => setArtists(d.artists ?? []))
+    adminFetch('/api/services').then(r => r.json()).then(d => setServices(d.services ?? []))
+    adminFetch('/api/artists').then(r => r.json()).then(d => setArtists(d.artists ?? []))
   }, [])
 
   // ── Load slots ───────────────────────────────────────────────────────────────
@@ -111,7 +112,7 @@ export default function ManualBookingClient() {
     setSlots([])
     set('start_time', '')
     const artistParam = form.artist_id ?? 'any'
-    fetch(`/api/bookings/slots?artistId=${artistParam}&date=${form.booking_date}&serviceId=${form.service_id}`)
+    adminFetch(`/api/bookings/slots?artistId=${artistParam}&date=${form.booking_date}&serviceId=${form.service_id}`)
       .then(r => r.json())
       .then(d => setSlots(d.slots ?? []))
       .finally(() => setSlotsLoading(false))
@@ -141,7 +142,7 @@ export default function ManualBookingClient() {
     setError('')
 
     try {
-      const res = await fetch('/api/admin/bookings/manual', {
+      const res = await adminFetch('/api/admin/bookings/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
