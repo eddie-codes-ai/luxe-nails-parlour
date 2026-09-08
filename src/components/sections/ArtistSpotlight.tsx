@@ -1,7 +1,7 @@
-"use client";
+// Server component. Was "use client" solely for a resize listener feeding 6
+// isMobile branches; all of them are now md: classes.
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
 
 const artistsData = [
   {
@@ -47,117 +47,67 @@ const artistsData = [
 ];
 
 export default function ArtistSpotlight() {
-  const [isMobile, setIsMobile] = useState(true);
   const featured = artistsData.slice(0, 3);
 
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
   return (
-    <section style={{ backgroundColor: "#F5EFE6", padding: isMobile ? "80px 24px" : "112px 48px" }}>
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+    /* #F5EFE6 is not one of the brand tokens, so it stays an explicit value
+       rather than being quietly "corrected" to cream. */
+    <section className="bg-[#F5EFE6] px-6 py-20 md:px-12 md:py-28">
+      <div className="mx-auto max-w-[1280px]">
 
         {/* Header */}
-        <div style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          justifyContent: "space-between",
-          alignItems: isMobile ? "flex-start" : "flex-end",
-          marginBottom: "64px",
-          gap: "32px",
-        }}>
+        <div className="mb-16 flex flex-col items-start justify-between gap-8 md:flex-row md:items-end">
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "16px" }}>
-              <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358", flexShrink: 0 }} />
-              <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.4em", textTransform: "uppercase", color: "#C5A358" }}>
+            <div className="mb-4 flex items-center gap-4">
+              <div className="h-px w-12 shrink-0 bg-gold" />
+              <span className="font-body text-[11px] uppercase tracking-[0.4em] text-gold">
                 The Team
               </span>
             </div>
-            <h2 style={{ fontFamily: "var(--font-heading), serif", fontSize: "clamp(40px, 5vw, 64px)", color: "#2D2424", lineHeight: 1.1 }}>
+            <h2 className="font-heading text-[clamp(40px,5vw,64px)] leading-[1.1] text-espresso">
               Meet Your Artists
             </h2>
           </div>
-          <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "16px", color: "rgba(45,36,36,0.55)", maxWidth: "320px", lineHeight: 1.7 }}>
+          <p className="max-w-[320px] font-body text-base leading-[1.7] text-espresso/55">
             Each artist brings a unique touch — find the one whose style speaks to you and book them directly.
           </p>
         </div>
 
-        {/* Artist Cards */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
-          gap: "32px",
-        }}>
+        {/* Artist cards */}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
           {featured.map((artist) => (
-            <div key={artist.id} style={{ position: "relative" }}>
+            <div key={artist.id} className="relative">
 
               {/* Image placeholder */}
-              <div
-                style={{
-                  position: "relative",
-                  backgroundColor: "#E5E0D8",
-                  aspectRatio: isMobile ? "4/3" : "3/4",
-                  marginBottom: "24px",
-                  overflow: "hidden",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <div style={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  backgroundColor: "rgba(197,163,88,0.2)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}>
-                  <span style={{ fontFamily: "var(--font-heading), serif", fontSize: "36px", color: "#C5A358" }}>
+              <div className="relative mb-6 flex aspect-[4/3] items-center justify-center overflow-hidden bg-sand md:aspect-[3/4]">
+                <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gold/20">
+                  <span className="font-heading text-4xl text-gold">
                     {artist.name.charAt(0)}
                   </span>
                 </div>
 
                 {artist.available_mobile && (
-                  <div style={{
-                    position: "absolute",
-                    top: "16px",
-                    left: "16px",
-                    backgroundColor: "#C5A358",
-                    padding: "4px 12px",
-                  }}>
-                    <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "10px", letterSpacing: "0.2em", textTransform: "uppercase", color: "white" }}>
+                  <div className="absolute left-4 top-4 bg-gold px-3 py-1">
+                    <span className="font-body text-[10px] uppercase tracking-[0.2em] text-white">
                       Mobile
                     </span>
                   </div>
                 )}
               </div>
 
-              <h3 style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#2D2424", marginBottom: "4px" }}>
+              <h3 className="mb-1 font-heading text-2xl text-espresso">
                 {artist.name}
               </h3>
 
-              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.15em", textTransform: "uppercase", color: "#C5A358", marginBottom: "16px" }}>
+              <p className="mb-4 font-body text-[11px] uppercase tracking-[0.15em] text-gold">
                 {artist.title}
               </p>
 
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              <div className="flex flex-wrap gap-2">
                 {artist.specialties.slice(0, 2).map((specialty) => (
                   <span
                     key={specialty}
-                    style={{
-                      fontFamily: "var(--font-body), sans-serif",
-                      fontSize: "10px",
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      color: "rgba(45,36,36,0.5)",
-                      border: "1px solid rgba(45,36,36,0.2)",
-                      padding: "4px 12px",
-                    }}
+                    className="border border-espresso/20 px-3 py-1 font-body text-[10px] uppercase tracking-[0.1em] text-espresso/50"
                   >
                     {specialty}
                   </span>
@@ -168,20 +118,10 @@ export default function ArtistSpotlight() {
         </div>
 
         {/* CTA */}
-        <div style={{ marginTop: "64px", textAlign: "center" }}>
+        <div className="mt-16 text-center">
           <Link
             href="/artists"
-            style={{
-              fontFamily: "var(--font-body), sans-serif",
-              fontSize: "13px",
-              letterSpacing: "0.2em",
-              textTransform: "uppercase",
-              backgroundColor: "#2D2424",
-              color: "#FDFBF7",
-              padding: "16px 40px",
-              textDecoration: "none",
-              display: "inline-block",
-            }}
+            className="inline-block bg-espresso px-10 py-4 font-body text-[13px] uppercase tracking-[0.2em] text-cream no-underline transition-colors hover:bg-gold hover:text-espresso"
           >
             Meet All {artistsData.length} Artists
           </Link>

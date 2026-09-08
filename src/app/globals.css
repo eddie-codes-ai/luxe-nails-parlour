@@ -25,6 +25,26 @@
 
   --font-heading: "Cormorant Garamond", Georgia, serif;
   --font-body: "Jost", "Helvetica Neue", sans-serif;
+
+  /* Hero entrance. Was a setTimeout + useState in HeroSection, which meant the
+   * headline stayed invisible until JavaScript ran - if JS was slow or failed,
+   * the homepage had no visible heading at all. As CSS it plays regardless. */
+  --animate-rise-in: rise-in 0.7s ease both;
+
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+/* Anyone who has asked their system to reduce motion gets the end state
+   immediately rather than the slide. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise-in {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
 
 /* The project reset lives in @layer base so that Tailwind utilities, which sit
