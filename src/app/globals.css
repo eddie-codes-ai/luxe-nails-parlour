@@ -1,56 +1,70 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Tailwind v4.
+ *
+ * Preflight (Tailwind's CSS reset) is deliberately NOT imported. This project
+ * predates Tailwind and carries its own reset below; Preflight would also
+ * strip the numbering from the M-Pesa <ol> in the booking flow and flatten
+ * ten headings that rely on default sizing. Utilities and theme only.
+ *
+ * Was `@tailwind base/components/utilities` — v3 syntax that v4 ignores
+ * silently, which is why no utility class has ever worked in this codebase.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
 
+/* Brand tokens. These generate utilities (bg-cream, text-espresso,
+ * font-heading, …) and are emitted as CSS variables, so existing
+ * var(--font-body) references keep working. */
+@theme {
+  --color-cream: #FDFBF7;
+  --color-espresso: #2D2424;
+  --color-gold: #C5A358;
+  --color-sand: #E5E0D8;
+  --color-rose: #D4A09A;
+  --color-terracotta: #C47B5A;
 
-:root {
-  --font-heading: 'Cormorant Garamond', serif;
-  --font-body: 'Jost', sans-serif;
+  --font-heading: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Jost", "Helvetica Neue", sans-serif;
 }
 
+/* The project reset lives in @layer base so that Tailwind utilities, which sit
+ * in the later `utilities` layer, can override it. Left unlayered it would beat
+ * every layered utility — `* { padding: 0 }` silently cancelled p-8 and friends. */
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background-color: var(--color-cream);
+    color: var(--color-espresso);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Text selection colour — gold highlight */
+  ::selection {
+    background-color: var(--color-gold);
+    color: var(--color-cream);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-cream);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-gold);
+  }
 }
-
-
-html {
-  scroll-behavior: smooth;
-}
-
-
-body {
-  font-family: var(--font-body);
-  background-color: #FDFBF7;
-  color: #2D2424;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-
-/* Text selection colour — gold highlight */
-::selection {
-  background-color: #C5A358;
-  color: #FDFBF7;
-}
-
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-
-::-webkit-scrollbar-track {
-  background: #FDFBF7;
-}
-
-
-::-webkit-scrollbar-thumb {
-  background: #C5A358;
-}
-
-
-

@@ -1,6 +1,15 @@
-"use client";
-
-import { useState, useEffect } from "react";
+// Converted to Tailwind as the first component off inline styles.
+//
+// What went away:
+//   - a resize listener with two pieces of state (isMobile / isTablet), which
+//     meant the mobile layout rendered first and only corrected after
+//     hydration measured the window. Breakpoints are plain CSS now, so the
+//     right layout is there on first paint.
+//   - two onMouseEnter/onMouseLeave handlers mutating style directly, replaced
+//     by hover:.
+//
+// No "use client" needed any more either — there is no state or effect left,
+// so this renders entirely on the server.
 
 const reasons = [
   {
@@ -36,64 +45,34 @@ const reasons = [
 ];
 
 export default function WhyUs() {
-  const [isMobile, setIsMobile] = useState(true);
-  const [isTablet, setIsTablet] = useState(false);
-
-  useEffect(() => {
-    const check = () => {
-      setIsMobile(window.innerWidth < 640);
-      setIsTablet(window.innerWidth >= 640 && window.innerWidth < 1024);
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  const columns = isMobile ? "1fr" : isTablet ? "repeat(2, 1fr)" : "repeat(3, 1fr)";
-
   return (
-    <section style={{ backgroundColor: "#2D2424", padding: isMobile ? "80px 24px" : "112px 48px" }}>
-      <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+    <section className="bg-espresso px-6 py-20 sm:px-12 sm:py-28">
+      <div className="mx-auto max-w-[1280px]">
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "80px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "16px", marginBottom: "16px" }}>
-            <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358" }} />
-            <span style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "11px", letterSpacing: "0.4em", textTransform: "uppercase", color: "#C5A358" }}>
+        <div className="mb-20 text-center">
+          <div className="mb-4 flex items-center justify-center gap-4">
+            <div className="h-px w-12 bg-gold" />
+            <span className="font-body text-[11px] uppercase tracking-[0.4em] text-gold">
               The Luxe Difference
             </span>
-            <div style={{ width: "48px", height: "1px", backgroundColor: "#C5A358" }} />
+            <div className="h-px w-12 bg-gold" />
           </div>
-          <h2 style={{ fontFamily: "var(--font-heading), serif", fontSize: "clamp(40px, 5vw, 64px)", color: "#FDFBF7" }}>
+          <h2 className="font-heading text-[clamp(40px,5vw,64px)] text-cream">
             Why Choose Us
           </h2>
         </div>
 
-        {/* Grid */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: columns,
-          gap: "1px",
-          backgroundColor: "rgba(253,251,247,0.1)",
-        }}>
+        {/* Grid — 1 column, 2 from 640px, 3 from 1024px */}
+        <div className="grid grid-cols-1 gap-px bg-cream/10 sm:grid-cols-2 lg:grid-cols-3">
           {reasons.map((reason, i) => (
             <div
               key={i}
-              style={{
-                backgroundColor: "#2D2424",
-                padding: isMobile ? "32px 24px" : "40px",
-                transition: "background-color 0.4s ease",
-              }}
-              onMouseEnter={e => (e.currentTarget.style.backgroundColor = "rgba(197,163,88,0.1)")}
-              onMouseLeave={e => (e.currentTarget.style.backgroundColor = "#2D2424")}
+              className="bg-espresso p-8 transition-colors duration-[400ms] hover:bg-gold/10 sm:p-10"
             >
-              <div style={{ fontSize: "24px", color: "#C5A358", marginBottom: "24px" }}>
-                {reason.icon}
-              </div>
-              <h3 style={{ fontFamily: "var(--font-heading), serif", fontSize: "24px", color: "#FDFBF7", marginBottom: "16px" }}>
-                {reason.title}
-              </h3>
-              <p style={{ fontFamily: "var(--font-body), sans-serif", fontSize: "14px", color: "rgba(253,251,247,0.5)", lineHeight: 1.7 }}>
+              <div className="mb-6 text-2xl text-gold">{reason.icon}</div>
+              <h3 className="mb-4 font-heading text-2xl text-cream">{reason.title}</h3>
+              <p className="font-body text-sm leading-[1.7] text-cream/50">
                 {reason.description}
               </p>
             </div>
