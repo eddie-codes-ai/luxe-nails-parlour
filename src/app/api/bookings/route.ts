@@ -291,10 +291,12 @@ export async function POST(req: NextRequest) {
 
     const servicePrice       = Number(service.base_price ?? 0)
     const houseTravelFee     = location_type === 'house_call' ? Number(travelFee) : 0
-    const lateNightFee       = isLateNight ? Math.round(servicePrice * (lateNightSurcharge / 100) * 100) / 100 : 0
-    // Add-ons count toward the deposit base. The late-night surcharge stays on
-    // the base service price, matching existing behaviour.
-    const totalBeforeDeposit = servicePrice + addOnsTotal + houseTravelFee + lateNightFee
+    // The surcharge is a premium on the whole job, so it applies to the service
+    // plus any add-ons - the same base the deposit is calculated from. Travel
+    // fee is excluded: it covers distance, not the hour of day.
+    const workSubtotal       = servicePrice + addOnsTotal
+    const lateNightFee       = isLateNight ? Math.round(workSubtotal * (lateNightSurcharge / 100) * 100) / 100 : 0
+    const totalBeforeDeposit = workSubtotal + houseTravelFee + lateNightFee
     const depositAmount      = Math.round(totalBeforeDeposit * (depositPercent / 100) * 100) / 100
     const initialStatus      = isLateNight ? 'pending_approval' : 'pending_payment'
     const expiryMinutes      = isLateNight ? 60 * 24 : slotHoldMinutes
