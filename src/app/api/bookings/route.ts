@@ -36,6 +36,53 @@ function overlaps(slotStart: number, slotEnd: number, bookStart: number, bookEnd
   return slotStart < bookEnd && slotEnd > bookStart
 }
 
+interface ArtistRow {
+  id: number
+  name: string
+  buffer_minutes: number
+}
+
+interface ScheduleRow {
+  artist_id: number
+  is_blocked?: boolean | null
+  start_time?: string | null
+  end_time?: string | null
+  late_cutoff_time?: string | null
+  late_end_time?: string | null
+}
+
+interface Candidate {
+  artist: ArtistRow
+  isLateNight: boolean
+  endMins: number
+}
+
+/**
+ * Whether an artist can start this service at `startMins` on their schedule.
+ * Returns null when they are blocked or the time falls outside their hours.
+ */
+function evaluateCandidate(
+  artist: ArtistRow,
+  schedule: ScheduleRow | null,
+  startMins: number,
+  durationMins: number
+): Candidate | null {
+  if (schedule?.is_blocked) return null
+
+  const dayStartMins   = timeToMins(schedule?.start_time ?? '09:30')
+  const dayEndMins     = timeToMins(schedule?.end_time   ?? '19:00')
+  const lateCutoffMins = schedule?.late_cutoff_time ? timeToMins(schedule.late_cutoff_time) : null
+  const lateEndMins    = schedule?.late_end_time    ? timeToMins(schedule.late_end_time)    : null
+
+  const isLateNight  = lateCutoffMins !== null && startMins >= lateCutoffMins
+  const withinNormal = startMins >= dayStartMins && startMins < dayEndMins
+  const withinLate   = isLateNight && lateEndMins !== null && startMins < lateEndMins
+
+  if (!withinNormal && !withinLate) return null
+
+  return { artist, isLateNight, endMins: startMins + durationMins + (artist.buffer_minutes ?? 0) }
+}
+
 // ── GET /api/bookings?id=xxx — fetch single booking for cancel page ──────────
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -97,13 +144,25 @@ export async function POST(req: NextRequest) {
     if (serviceError || !service) return NextResponse.json({ error: 'Service not found' }, { status: 404 })
     if (location_type === 'house_call' && !service.house_call_available) return NextResponse.json({ error: 'This service is not available as a house call' }, { status: 400 })
 
-    let artist: { id: number; name: string; buffer_minutes: number } | null = null
+    const isAnyArtist = !artist_id
+
+    // Pool of artists who could serve this booking. When the customer picks
+    // "any", capacity is bounded by how many artists are actually free — the
+    // previous code skipped every availability check for unassigned bookings,
+    // so a single slot could be booked without limit.
+    let artistPool: ArtistRow[]
     if (artist_id) {
       const { data, error: artistError } = await supabase
         .from('artists').select('id, name, buffer_minutes').eq('id', artist_id).single()
       if (artistError || !data) return NextResponse.json({ error: 'Artist not found' }, { status: 404 })
-      artist = data
+      artistPool = [data]
+    } else {
+      const { data, error: artistsError } = await supabase
+        .from('artists').select('id, name, buffer_minutes')
+      if (artistsError || !data?.length) return NextResponse.json({ error: 'No artists available' }, { status: 503 })
+      artistPool = data
     }
+    const artist = artist_id ? artistPool[0] : null
 
     const { data: settings } = await supabase.from('booking_settings').select('*').eq('id', 1).single()
     const depositPercent     = settings?.deposit_percent ?? 30
@@ -111,40 +170,70 @@ export async function POST(req: NextRequest) {
     const lateNightSurcharge = settings?.late_night_surcharge_percent ?? 15
     const slotHoldMinutes    = settings?.slot_hold_minutes ?? 60
 
-    let schedule: any = null
-    if (artist_id) {
-      const { data: scheduleData } = await supabase
-        .from('artist_schedules').select('*').eq('artist_id', artist_id).eq('schedule_date', booking_date).single()
-      schedule = scheduleData
-      if (schedule?.is_blocked) return NextResponse.json({ error: 'Artist is not available on this date' }, { status: 409 })
+    const startMins = timeToMins(start_time)
+
+    const { data: schedules } = await supabase
+      .from('artist_schedules').select('*')
+      .in('artist_id', artistPool.map(a => a.id))
+      .eq('schedule_date', booking_date)
+
+    // Every artist whose working hours cover the requested start time.
+    const candidates = artistPool
+      .map(a => evaluateCandidate(a, schedules?.find(s => s.artist_id === a.id) ?? null, startMins, service.duration_minutes))
+      .filter((c): c is Candidate => c !== null)
+
+    if (!candidates.length) {
+      if (!isAnyArtist) {
+        const schedule = schedules?.find(s => s.artist_id === artist!.id)
+        if (schedule?.is_blocked) {
+          return NextResponse.json({ error: 'Artist is not available on this date' }, { status: 409 })
+        }
+        return NextResponse.json({ error: "Selected time is outside the artist's working hours" }, { status: 400 })
+      }
+      return NextResponse.json({ error: 'No artist is working at that time. Please choose another slot.' }, { status: 400 })
     }
 
-    const startMins      = timeToMins(start_time)
-    const dayEndMins     = timeToMins(schedule?.end_time ?? '19:00')
-    const lateCutoffMins = schedule?.late_cutoff_time ? timeToMins(schedule.late_cutoff_time) : null
-    const lateEndMins    = schedule?.late_end_time    ? timeToMins(schedule.late_end_time)    : null
-    const isLateNight    = lateCutoffMins !== null && startMins >= lateCutoffMins
+    // All non-cancelled bookings on the date, so we can check both assigned
+    // conflicts and how many unassigned bookings already claim this window.
+    const { data: dayBookings } = await supabase
+      .from('bookings').select('artist_id, start_time, end_time')
+      .eq('booking_date', booking_date)
+      .not('status', 'in', '("declined","cancelled","expired")')
 
-    const withinNormal = startMins >= timeToMins(schedule?.start_time ?? '09:30') && startMins < dayEndMins
-    const withinLate   = isLateNight && lateEndMins !== null && startMins < lateEndMins
+    const bookingsOnDay = dayBookings ?? []
 
-    if (!withinNormal && !withinLate) return NextResponse.json({ error: "Selected time is outside the artist's working hours" }, { status: 400 })
-
-    const bufferMins = artist?.buffer_minutes ?? 0
-    const endMins    = startMins + service.duration_minutes + bufferMins
-    const end_time   = minsToTime(endMins)
-
-    if (artist_id) {
-      const { data: conflictBookings } = await supabase
-        .from('bookings').select('start_time, end_time')
-        .eq('artist_id', artist_id).eq('booking_date', booking_date)
-        .not('status', 'in', '("declined","cancelled","expired")')
-
-      const slotTaken = (conflictBookings ?? []).some(b =>
-        overlaps(startMins, endMins, timeToMins(b.start_time), timeToMins(b.end_time))
+    const freeCandidates = candidates.filter(c =>
+      !bookingsOnDay.some(b =>
+        b.artist_id === c.artist.id &&
+        overlaps(startMins, c.endMins, timeToMins(b.start_time), timeToMins(b.end_time))
       )
-      if (slotTaken) return NextResponse.json({ error: 'This slot has just been taken. Please choose another time.' }, { status: 409 })
+    )
+
+    if (!freeCandidates.length) {
+      return NextResponse.json({ error: 'This slot has just been taken. Please choose another time.' }, { status: 409 })
     }
+
+    if (isAnyArtist) {
+      // Unassigned bookings will each need their own artist at confirmation
+      // time, so they consume capacity even though no artist_id is set yet.
+      const unassignedHolding = bookingsOnDay.filter(b =>
+        b.artist_id === null &&
+        overlaps(startMins, Math.max(...freeCandidates.map(c => c.endMins)), timeToMins(b.start_time), timeToMins(b.end_time))
+      ).length
+
+      if (freeCandidates.length <= unassignedHolding) {
+        return NextResponse.json({ error: 'This slot has just been taken. Please choose another time.' }, { status: 409 })
+      }
+    }
+
+    // Prefer an artist who can take this within normal hours; only treat the
+    // booking as a late-night request when nobody free can serve it normally.
+    const chosen = freeCandidates.find(c => !c.isLateNight) ?? freeCandidates[0]
+    const isLateNight = chosen.isLateNight
+    // Reserve against the longest buffer in the free pool so an unassigned
+    // booking never under-reserves whichever artist ends up taking it.
+    const endMins  = Math.max(...freeCandidates.map(c => c.endMins))
+    const end_time = minsToTime(endMins)
 
     const servicePrice       = Number(service.base_price ?? 0)
     const houseTravelFee     = location_type === 'house_call' ? Number(travelFee) : 0

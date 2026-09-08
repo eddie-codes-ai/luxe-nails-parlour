@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,9 @@ const supabaseAdmin = createClient(
 
 // GET — fetch all products
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { data, error } = await supabaseAdmin
     .from("products")
     .select("*")
@@ -22,6 +26,9 @@ export async function GET() {
 
 // POST — add a new product
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await request.json();
 
   const { data, error } = await supabaseAdmin
@@ -46,6 +53,9 @@ export async function POST(request: NextRequest) {
 
 // PUT — update an existing product
 export async function PUT(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await request.json();
 
   const { data, error } = await supabaseAdmin
@@ -71,6 +81,9 @@ export async function PUT(request: NextRequest) {
 
 // DELETE — remove a product
 export async function DELETE(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await request.json();
 
   const { error } = await supabaseAdmin

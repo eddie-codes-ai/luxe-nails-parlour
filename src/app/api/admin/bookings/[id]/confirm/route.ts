@@ -6,6 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/resend'
 import { customerConfirmationEmail } from '@/lib/email-templates'
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { id } = await params
 
   // ── Fetch full booking with service + artist ───────────────────────────────

@@ -52,7 +52,7 @@ export default function GalleryPage() {
 
   useEffect(() => {
     const fetchImages = async () => {
-      const res = await fetch("/api/admin/gallery");
+      const res = await fetch("/api/gallery");
       const data = await res.json();
       setImages(data.images || []);
       setLoading(false);

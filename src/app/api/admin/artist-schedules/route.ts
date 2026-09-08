@@ -3,21 +3,18 @@
 // POST /api/admin/artist-schedules — upsert schedules for artist
 
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-async function checkAuth() {
-  const cookieStore = await cookies()
-  return cookieStore.get('admin-auth')?.value === 'true'
-}
 
 export async function GET(req: NextRequest) {
-  if (!await checkAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { searchParams } = new URL(req.url)
   const artistId = searchParams.get('artistId')
@@ -37,7 +34,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await checkAuth()) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const body = await req.json().catch(() => ({}))
   const { artistId, schedules } = body

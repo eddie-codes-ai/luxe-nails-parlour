@@ -153,6 +153,7 @@ export default function BookingClient() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [created, setCreated] = useState<CreatedBooking | null>(null)
+  const [payment, setPayment] = useState<{ mpesaTill: string | null; whatsapp: string | null }>({ mpesaTill: null, whatsapp: null })
   const [mpesaRef, setMpesaRef] = useState('')
   const [mpesaSubmitting, setMpesaSubmitting] = useState(false)
   const [mpesaError, setMpesaError] = useState('')
@@ -175,6 +176,7 @@ export default function BookingClient() {
   useEffect(() => {
     fetch('/api/services').then(r => r.json()).then(d => setServices(d.services ?? d ?? []))
     fetch('/api/artists').then(r => r.json()).then(d => setArtists(d.artists ?? d ?? []))
+    fetch('/api/payment-info').then(r => r.json()).then(setPayment).catch(() => {})
   }, [])
 
   const fetchSlots = useCallback(async () => {
@@ -527,14 +529,24 @@ export default function BookingClient() {
                 {/* M-Pesa instructions */}
                 <div style={{ background: '#F0FBF4', border: '1px solid #A8D8B8', borderRadius: 2, padding: '1.25rem', marginBottom: '1.5rem' }}>
                   <p style={{ fontSize: '0.62rem', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#3A7A5A', marginBottom: '0.75rem', fontWeight: 600 }}>M-Pesa Payment Instructions</p>
-                  <ol style={{ paddingLeft: '1.2rem', fontSize: '0.86rem', color: '#2C4A35', lineHeight: 2, margin: 0 }}>
-                    <li>Open M-Pesa → <strong>Lipa na M-Pesa → Send Money</strong></li>
-                    <li>Enter the business number provided</li>
-                    <li>Amount: <strong>{KES(created.deposit_amount)}</strong></li>
-                    <li>Confirm with your PIN</li>
-                    <li>Copy the <strong>M-Pesa confirmation code</strong> from the SMS</li>
-                    <li>Paste it in the field below</li>
-                  </ol>
+                  {payment.mpesaTill ? (
+                    <>
+                      <ol style={{ paddingLeft: '1.2rem', fontSize: '0.86rem', color: '#2C4A35', lineHeight: 2, margin: 0 }}>
+                        <li>Open M-Pesa → <strong>Lipa na M-Pesa → Buy Goods &amp; Services</strong></li>
+                        <li>Till Number: <strong style={{ fontFamily: 'monospace', fontSize: '1rem' }}>{payment.mpesaTill}</strong></li>
+                        <li>Amount: <strong>{KES(created.deposit_amount)}</strong></li>
+                        <li>Confirm with your PIN</li>
+                        <li>Copy the <strong>M-Pesa confirmation code</strong> from the SMS</li>
+                        <li>Paste it in the field below</li>
+                      </ol>
+                    </>
+                  ) : (
+                    <p style={{ fontSize: '0.86rem', color: '#2C4A35', lineHeight: 1.7, margin: 0 }}>
+                      Our M-Pesa details are not published online yet. Message us
+                      {payment.whatsapp ? <> on <a href={`https://wa.me/${payment.whatsapp}`} target="_blank" rel="noreferrer" style={{ color: '#2C4A35', fontWeight: 600 }}>WhatsApp</a></> : ' on WhatsApp'}
+                      {' '}and we will send you the till number for your <strong>{KES(created.deposit_amount)}</strong> deposit.
+                    </p>
+                  )}
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>

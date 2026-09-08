@@ -3,8 +3,8 @@
 // Owner creates a booking manually for WhatsApp/call/walk-in customers
 
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,10 +24,8 @@ function minsToTime(mins: number): string {
 
 export async function POST(req: NextRequest) {
   // Auth check
-  const cookieStore = await cookies()
-  if (cookieStore.get('admin-auth')?.value !== 'true') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const body = await req.json().catch(() => ({}))
 

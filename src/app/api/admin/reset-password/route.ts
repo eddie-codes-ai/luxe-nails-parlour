@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hashPassword, safeCompare } from "@/lib/password";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,7 +9,16 @@ const supabase = createClient(
 );
 
 export async function POST(request: NextRequest) {
-  const { email, code, newPassword } = await request.json();
+  // A 6-digit code is only safe while guesses are capped.
+  const limit = rateLimit(clientKey(request, "reset-password"), 6, 15 * 60 * 1000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "too_many_requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
+
+  const { email, code, newPassword } = await request.json().catch(() => ({}));
 
   if (!email || !code || !newPassword) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
@@ -27,11 +38,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
 
-  if (data.email !== email) {
+  if (String(data.email).trim().toLowerCase() !== String(email).trim().toLowerCase()) {
     return NextResponse.json({ error: "invalid_code" }, { status: 400 });
   }
 
-  if (!data.reset_code || data.reset_code !== code) {
+  if (!safeCompare(data.reset_code, String(code))) {
     return NextResponse.json({ error: "invalid_code" }, { status: 400 });
   }
 
@@ -47,7 +58,7 @@ export async function POST(request: NextRequest) {
   const { error: updateError } = await supabase
     .from("admin_settings")
     .update({
-      password: newPassword,
+      password: await hashPassword(newPassword),
       reset_code: null,
       reset_code_expires_at: null,
     })

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +10,9 @@ const supabase = createClient(
 // ─── GET — list all services ──────────────────────────────────────────────────
 
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { data, error } = await supabase
     .from("services")
     .select("id, name, tagline, tag, tag_color, description, base_price, duration_minutes, category, house_call_available, is_active, includes, add_ons, created_at")
@@ -25,6 +29,9 @@ export async function GET() {
 // ─── POST — create a new service ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const {
     name, tagline, tag, tag_color,
@@ -65,6 +72,9 @@ export async function POST(req: NextRequest) {
 // ─── PUT — update an existing service ────────────────────────────────────────
 
 export async function PUT(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const {
     id, name, tagline, tag, tag_color,
@@ -106,6 +116,9 @@ export async function PUT(req: NextRequest) {
 // ─── DELETE — remove a service ────────────────────────────────────────────────
 
 export async function DELETE(req: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const { id } = body;
 

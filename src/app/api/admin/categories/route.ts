@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,9 @@ const supabase = createClient(
 
 // GET — fetch all categories
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { data, error } = await supabase
     .from("categories")
     .select("*")
@@ -22,6 +26,9 @@ export async function GET() {
 
 // POST — add a new category
 export async function POST(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await request.json();
 
   if (!body.name?.trim()) {
@@ -42,6 +49,9 @@ export async function POST(request: NextRequest) {
 
 // DELETE — remove a category
 export async function DELETE(request: NextRequest) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await request.json();
 
   const { error } = await supabase

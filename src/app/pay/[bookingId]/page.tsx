@@ -2,10 +2,11 @@ import { createClient } from '@supabase/supabase-js'
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
 import PayClient from './PayClient'
+import { getPaymentSettings } from '@/lib/payment-settings'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY!
 )
 
 export const metadata: Metadata = {
@@ -68,9 +69,17 @@ async function getBooking(id: string): Promise<BookingRow | null> {
 export default async function PayPage({
   params,
 }: {
-  params: { bookingId: string }
+  // Next 16 passes params as a Promise. Reading it synchronously yielded
+  // undefined, so this page 404'd on every request.
+  params: Promise<{ bookingId: string }>
 }) {
-  const booking = await getBooking(params.bookingId)
+  const { bookingId } = await params
+
+  const [booking, payment] = await Promise.all([
+    getBooking(bookingId),
+    getPaymentSettings(),
+  ])
+
   if (!booking) notFound()
-  return <PayClient booking={booking} />
+  return <PayClient booking={booking} payment={payment} />
 }

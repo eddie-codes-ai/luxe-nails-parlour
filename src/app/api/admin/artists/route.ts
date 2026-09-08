@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,6 +9,9 @@ const supabase = createClient(
 
 // GET — fetch all artists
 export async function GET() {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const { data, error } = await supabase
     .from("artists")
     .select("*")
@@ -19,6 +23,9 @@ export async function GET() {
 
 // POST — add new artist
 export async function POST(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const { name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url } = body;
 
@@ -32,6 +39,9 @@ export async function POST(req: Request) {
 
 // PUT — update existing artist
 export async function PUT(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const { id, name, role, title, bio, specialty, years_experience, services, mobile_available, photo_url } = body;
 
@@ -45,6 +55,9 @@ export async function PUT(req: Request) {
 
 // DELETE — remove artist
 export async function DELETE(req: Request) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const body = await req.json();
   const { id } = body;
 

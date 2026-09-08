@@ -3,8 +3,8 @@
 // Returns all bookings with service + artist details, newest first
 
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { requireAdmin } from '@/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -13,11 +13,8 @@ const supabase = createClient(
 
 export async function GET() {
   // ── Auth check ─────────────────────────────────────────────────────────────
-  const cookieStore = await cookies()
-  const auth = cookieStore.get('admin-auth')
-  if (auth?.value !== 'true') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { data, error } = await supabase
     .from('bookings')

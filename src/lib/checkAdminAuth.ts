@@ -1,11 +1,12 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SESSION_COOKIE, verifySession } from "./session";
 
 export async function checkAdminAuth() {
   const cookieStore = await cookies();
-  const auth = cookieStore.get("admin-auth");
+  const session = await verifySession(cookieStore.get(SESSION_COOKIE)?.value);
 
-  if (auth?.value !== "true") {
+  if (!session) {
     redirect("/admin/login");
   }
 }

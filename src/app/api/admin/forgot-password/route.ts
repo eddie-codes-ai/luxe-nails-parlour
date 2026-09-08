@@ -1,6 +1,8 @@
+import { randomInt } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -10,9 +12,17 @@ const supabase = createClient(
 const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export async function POST(request: NextRequest) {
-  const { email } = await request.json();
+  const limit = rateLimit(clientKey(request, "forgot-password"), 4, 15 * 60 * 1000);
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: "too_many_requests" },
+      { status: 429, headers: { "Retry-After": String(limit.retryAfter) } }
+    );
+  }
 
-  if (!email) {
+  const { email } = await request.json().catch(() => ({}));
+
+  if (!email || typeof email !== "string") {
     return NextResponse.json({ error: "Email required" }, { status: 400 });
   }
 
@@ -28,12 +38,13 @@ export async function POST(request: NextRequest) {
   }
 
   // Always return success — don't reveal if email exists or not
-  if (data.email !== email) {
+  if (String(data.email).trim().toLowerCase() !== email.trim().toLowerCase()) {
     return NextResponse.json({ success: true });
   }
 
-  // Generate 6-digit code
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate 6-digit code with a cryptographic RNG. Math.random() is
+  // predictable and must never be used to mint a security token.
+  const code = String(randomInt(100000, 1000000));
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   // Store in Supabase

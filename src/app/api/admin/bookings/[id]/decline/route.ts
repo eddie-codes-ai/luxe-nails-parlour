@@ -1,9 +1,9 @@
 // src/app/api/admin/bookings/[id]/decline/route.ts
 import { createClient } from '@supabase/supabase-js'
-import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { sendEmail } from '@/lib/resend'
 import { customerDeclinedEmail } from '@/lib/email-templates'
+import { requireAdmin } from '@/lib/requireAdmin'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,10 +14,8 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const cookieStore = await cookies()
-  if (cookieStore.get('admin-auth')?.value !== 'true') {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  const denied = await requireAdmin()
+  if (denied) return denied
 
   const { id } = await params
   const body = await req.json().catch(() => ({}))

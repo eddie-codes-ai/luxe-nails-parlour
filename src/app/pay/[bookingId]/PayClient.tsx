@@ -1,5 +1,7 @@
 'use client'
 
+import type { PaymentSettings } from '@/lib/payment-settings'
+
 import { useState } from 'react'
 import Link from 'next/link'
 
@@ -26,11 +28,8 @@ interface Booking {
 
 interface Props {
   booking: Booking
+  payment: PaymentSettings
 }
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const MPESA_TILL = '123456' // 🔁 Replace with real till number when ready
 
 // ── Tokens ────────────────────────────────────────────────────────────────────
 
@@ -74,7 +73,7 @@ function kes(n: number) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PayClient({ booking }: Props) {
+export default function PayClient({ booking, payment }: Props) {
   const [mpesaRef, setMpesaRef]     = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted]   = useState(false)
@@ -99,7 +98,8 @@ export default function PayClient({ booking }: Props) {
 
   // ── Copy till number ────────────────────────────────────────────────────────
   function copyTill() {
-    navigator.clipboard.writeText(MPESA_TILL).then(() => {
+    if (!payment.mpesaTill) return
+    navigator.clipboard.writeText(payment.mpesaTill).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     })
@@ -280,11 +280,28 @@ export default function PayClient({ booking }: Props) {
             How to Pay via M-Pesa
           </p>
 
+          {!payment.mpesaTill ? (
+            /* No till configured yet — never show fake payment steps. */
+            <div style={{ background: colors.bg, border: `1px solid ${colors.sand}`, borderRadius: '6px', padding: '16px 20px' }}>
+              <p style={{ margin: 0, fontSize: '0.9rem', color: colors.espresso, lineHeight: 1.6 }}>
+                Our M-Pesa details are not published online yet. Message us{' '}
+                {payment.whatsapp ? (
+                  <a href={`https://wa.me/${payment.whatsapp}`} style={{ color: colors.gold, textDecoration: 'none', fontWeight: 600 }}>
+                    on WhatsApp
+                  </a>
+                ) : 'on WhatsApp'}{' '}
+                and we will send you the till number for your{' '}
+                <strong>{kes(booking.deposit_amount)}</strong> deposit.
+              </p>
+            </div>
+          ) : (
+          <>
+
           {/* Steps */}
           {[
             ['1', 'Go to M-Pesa on your phone'],
             ['2', 'Select Lipa na M-Pesa → Buy Goods & Services'],
-            ['3', `Enter Till Number: ${MPESA_TILL}`],
+            ['3', `Enter Till Number: ${payment.mpesaTill}`],
             ['4', `Enter amount: KSh ${Number(booking.deposit_amount).toLocaleString()}`],
             ['5', 'Enter your M-Pesa PIN and confirm'],
             ['6', 'Copy the confirmation code below and paste it here'],
@@ -311,7 +328,7 @@ export default function PayClient({ booking }: Props) {
                 Till Number
               </p>
               <p style={{ margin: 0, fontSize: '1.6rem', fontFamily: 'monospace', fontWeight: 700, color: colors.espresso, letterSpacing: '0.08em' }}>
-                {MPESA_TILL}
+                {payment.mpesaTill}
               </p>
             </div>
             <button
@@ -340,6 +357,8 @@ export default function PayClient({ booking }: Props) {
               {kes(booking.deposit_amount)}
             </span>
           </div>
+          </>
+          )}
         </div>
 
         {/* ── Submit M-Pesa Reference ── */}
@@ -396,16 +415,18 @@ export default function PayClient({ booking }: Props) {
         </div>
 
         {/* ── Help ── */}
-        <p style={{ textAlign: 'center', fontSize: '0.82rem', color: colors.espresso, opacity: 0.5, lineHeight: 1.7 }}>
-          Having trouble? WhatsApp us at{' '}
-          <a
-            href="https://wa.me/254000000000"
-            style={{ color: colors.gold, textDecoration: 'none', fontWeight: 600 }}
-          >
-            0700 000 000
-          </a>{' '}
-          and we'll help you out.
-        </p>
+        {payment.whatsapp && (
+          <p style={{ textAlign: 'center', fontSize: '0.82rem', color: colors.espresso, opacity: 0.5, lineHeight: 1.7 }}>
+            Having trouble? WhatsApp us at{' '}
+            <a
+              href={`https://wa.me/${payment.whatsapp}`}
+              style={{ color: colors.gold, textDecoration: 'none', fontWeight: 600 }}
+            >
+              +{payment.whatsapp}
+            </a>{' '}
+            and we&apos;ll help you out.
+          </p>
+        )}
 
       </div>
     </main>

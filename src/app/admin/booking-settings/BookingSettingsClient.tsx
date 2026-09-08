@@ -12,6 +12,7 @@ interface BookingSettings {
   late_cancel_hours:            number
   owner_whatsapp:               string
   owner_email:                  string
+  mpesa_till:                   string
 }
 
 const c = {
@@ -91,6 +92,7 @@ export default function BookingSettingsClient() {
     late_cancel_hours:            4,
     owner_whatsapp:               '',
     owner_email:                  '',
+    mpesa_till:                   '',
   })
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -104,7 +106,7 @@ export default function BookingSettingsClient() {
         return r.json()
       })
       .then(d => {
-        if (d?.settings) setSettings(d.settings)
+        if (d?.settings) setSettings({ ...d.settings, mpesa_till: d.settings.mpesa_till ?? '' })
       })
       .catch(() => setError('Failed to load settings'))
       .finally(() => setLoading(false))
@@ -222,6 +224,17 @@ export default function BookingSettingsClient() {
             <Label>Late arrival grace period</Label>
             <Input value={settings.late_grace_minutes} onChange={v => set('late_grace_minutes', Number(v))} type="number" suffix="min" />
             <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>Arrive later than this = no refund</p>
+          </div>
+        </SectionCard>
+
+        {/* Payment */}
+        <SectionCard title="Payment" description="Shown to customers on the deposit and payment pages">
+          <div>
+            <Label>M-Pesa till number</Label>
+            <Input value={settings.mpesa_till} onChange={v => set('mpesa_till', v)} />
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>
+              Buy Goods &amp; Services till. Leave blank to ask customers to request it on WhatsApp instead.
+            </p>
           </div>
         </SectionCard>
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { hashPassword, verifyPassword } from "@/lib/password";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,7 +9,18 @@ const supabaseAdmin = createClient(
 );
 
 export async function PUT(request: NextRequest) {
-  const { currentPassword, newPassword } = await request.json();
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
+  const { currentPassword, newPassword } = await request.json().catch(() => ({}));
+
+  if (typeof currentPassword !== "string" || typeof newPassword !== "string") {
+    return NextResponse.json({ success: false, error: "missing_fields" }, { status: 400 });
+  }
+
+  if (newPassword.length < 8) {
+    return NextResponse.json({ success: false, error: "password_too_short" }, { status: 400 });
+  }
 
   // Fetch current credentials from Supabase
   const { data, error } = await supabaseAdmin
@@ -21,14 +34,14 @@ export async function PUT(request: NextRequest) {
   }
 
   // Verify current password
-  if (data.password !== currentPassword) {
+  if (!(await verifyPassword(currentPassword, data.password))) {
     return NextResponse.json({ success: false, error: "incorrect_password" }, { status: 401 });
   }
 
   // Update to new password
   const { error: updateError } = await supabaseAdmin
     .from("admin_settings")
-    .update({ password: newPassword })
+    .update({ password: await hashPassword(newPassword) })
     .eq("id", 1);
 
   if (updateError) {
