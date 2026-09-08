@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
 import { getDefaultHours, isLateStart, resolveHours, startBounds } from '@/lib/working-hours'
+import { checkStaffing } from '@/lib/staffing'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
     // ── Fetch existing bookings for all artists on this date ───────────────────
     const { data: dayBookings } = await supabase
       .from('bookings')
-      .select('artist_id, start_time, end_time, status, expires_at')
+      .select('artist_id, start_time, end_time, status, expires_at, location_type')
       .in('artist_id', artistIds)
       .eq('booking_date', date)
       .not('status', 'in', '("declined","cancelled","expired")')
@@ -170,6 +171,30 @@ export async function GET(req: NextRequest) {
     const existingBookings = activeHolds(dayBookings)
 
     const defaultHours = await getDefaultHours(supabase)
+
+    // docs/04 §3 — a house call must leave someone at the storefront.
+    let roster: { id: number }[] = []
+    let rosterSchedules: { artist_id: number }[] | null = null
+    if (houseCall) {
+      const { data: r } = await supabase.from('artists').select('id')
+      roster = r ?? []
+      const { data: rs } = await supabase
+        .from('artist_schedules').select('*')
+        .in('artist_id', roster.map(a => a.id))
+        .eq('schedule_date', date)
+      rosterSchedules = rs
+    }
+
+    const storefrontCovered = (slotStart: number, slotEnd: number) =>
+      !houseCall || checkStaffing({
+        allArtists: roster,
+        schedules: rosterSchedules as never,
+        defaultHours,
+        dayBookings: dayBookings as never,
+        startMins: slotStart,
+        endMins: slotEnd,
+        durationMins: service.duration_minutes,
+      }).canAddHouseCall
 
     // ── Specific artist mode ───────────────────────────────────────────────────
     if (!isAnyArtist) {
@@ -204,6 +229,7 @@ export async function GET(req: NextRequest) {
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
         if (slotStart <= earliestStartMins) { cursor += slotStep; continue }
+        if (!storefrontCovered(slotStart, slotEnd)) { cursor += slotStep; continue }
 
         slots.push({
           start_time:   startStr,
@@ -250,7 +276,7 @@ export async function GET(req: NextRequest) {
         const isLateNight = isLateStart(slotStart, bounds)
         const isTaken     = bookedRanges.some(b => overlaps(slotStart, slotEnd, b.start, b.end))
 
-        if (!isTaken && slotStart > earliestStartMins) {
+        if (!isTaken && slotStart > earliestStartMins && storefrontCovered(slotStart, slotEnd)) {
           const existing = slotMap.get(startStr)
           if (existing) {
             existing.availableArtistIds.push(artist.id)

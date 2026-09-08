@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
 import { getDefaultHours, isLateStart, resolveHours, startBounds, type WorkingHours } from '@/lib/working-hours'
+import { checkStaffing } from '@/lib/staffing'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -251,7 +252,7 @@ export async function POST(req: NextRequest) {
     // All non-cancelled bookings on the date, so we can check both assigned
     // conflicts and how many unassigned bookings already claim this window.
     const { data: dayBookings } = await supabase
-      .from('bookings').select('artist_id, start_time, end_time, status, expires_at')
+      .from('bookings').select('artist_id, start_time, end_time, status, expires_at, location_type')
       .eq('booking_date', booking_date)
       .not('status', 'in', '("declined","cancelled","expired")')
 
@@ -278,6 +279,31 @@ export async function POST(req: NextRequest) {
 
       if (freeCandidates.length <= unassignedHolding) {
         return NextResponse.json({ error: 'This slot has just been taken. Please choose another time.' }, { status: 409 })
+      }
+    }
+
+    // docs/04 §3 — a house call must not leave the storefront unstaffed.
+    if (isHouseCall) {
+      const { data: roster } = await supabase.from('artists').select('id')
+      const { data: rosterSchedules } = await supabase
+        .from('artist_schedules').select('*')
+        .in('artist_id', (roster ?? []).map(a => a.id))
+        .eq('schedule_date', booking_date)
+
+      const staffing = checkStaffing({
+        allArtists: roster ?? [],
+        schedules: rosterSchedules,
+        defaultHours,
+        dayBookings: bookingsOnDay,
+        startMins,
+        endMins: Math.max(...freeCandidates.map(c => c.endMins)),
+        durationMins: service.duration_minutes,
+      })
+
+      if (!staffing.canAddHouseCall) {
+        return NextResponse.json({
+          error: 'We cannot send an artist out at that time — someone has to stay at the studio. Please choose another slot or book in-studio.',
+        }, { status: 409 })
       }
     }
 
