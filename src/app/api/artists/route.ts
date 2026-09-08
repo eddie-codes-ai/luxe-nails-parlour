@@ -13,7 +13,7 @@ const supabase = createClient(
 export async function GET() {
   const { data, error } = await supabase
     .from('artists')
-    .select('id, name, bio, photo_url, buffer_minutes')
+    .select('id, name, bio, photo_url, buffer_minutes, mobile_available')
     .order('name')
 
   if (error) {

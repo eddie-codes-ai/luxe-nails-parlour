@@ -17,6 +17,7 @@ interface Artist {
   name: string
   photo_url?: string
   buffer_minutes: number
+  mobile_available?: boolean | null
 }
 
 interface TimeSlot {
@@ -171,6 +172,19 @@ export default function BookingClient() {
 
   const svc = services.find(s => s.id === form.service_id)
   const art = artists.find(a => a.id === form.artist_id)
+
+  // A house call needs both a service that offers it and an artist who travels.
+  // The artist half was previously unchecked, so a studio-only artist could be
+  // booked for one.
+  const anyArtistTravels = artists.some(a => a.mobile_available)
+  const houseCallAvailable =
+    !!svc?.house_call_available && (art ? !!art.mobile_available : anyArtistTravels)
+
+  const houseCallBlockedReason =
+    !svc?.house_call_available   ? 'Not available for this service'
+    : art && !art.mobile_available ? `${art.name} works at the studio only`
+    : !anyArtistTravels          ? 'No artists offer house calls yet'
+    : undefined
   const selSlot = slots.find(s => s.start_time === form.start_time)
 
   useEffect(() => {
@@ -181,19 +195,36 @@ export default function BookingClient() {
 
   const fetchSlots = useCallback(async () => {
     if (!form.booking_date || !form.service_id) return
-    setSlotsLoading(true); setSlotsError(''); setSlots([]); set('start_time', '')
+    setSlotsLoading(true); setSlotsError(''); setSlots([])
     try {
       const artistParam = form.artist_id !== null ? form.artist_id : 'any'
-      const r = await fetch(`/api/bookings/slots?artistId=${artistParam}&date=${form.booking_date}&serviceId=${form.service_id}`)
+      const r = await fetch(
+        `/api/bookings/slots?artistId=${artistParam}&date=${form.booking_date}` +
+        `&serviceId=${form.service_id}&locationType=${form.location_type}`
+      )
       const d = await r.json()
-      if (!r.ok) { setSlotsError(d.error ?? 'Failed to load slots'); return }
-      if (!d.is_artist_available) { setSlotsError(d.message ?? 'Artist unavailable'); return }
-      setSlots(d.slots ?? [])
+      if (!r.ok) { setSlotsError(d.error ?? 'Failed to load slots'); set('start_time', ''); return }
+      if (!d.is_artist_available) { setSlotsError(d.message ?? 'Artist unavailable'); set('start_time', ''); return }
+
+      const next: TimeSlot[] = d.slots ?? []
+      setSlots(next)
+
+      // Switching to a house call narrows the artist pool, which can retire a
+      // slot the customer already picked. Keep their choice when it survives.
+      setForm(prev => prev.start_time && !next.some(sl => sl.start_time === prev.start_time && sl.status !== 'taken')
+        ? { ...prev, start_time: '' }
+        : prev)
     } catch { setSlotsError('Could not load times. Please try again.') }
     finally { setSlotsLoading(false) }
-  }, [form.artist_id, form.booking_date, form.service_id])
+  }, [form.artist_id, form.booking_date, form.service_id, form.location_type])
 
   useEffect(() => { fetchSlots() }, [fetchSlots])
+
+  useEffect(() => {
+    if (form.location_type === 'house_call' && !houseCallAvailable) {
+      setForm(prev => ({ ...prev, location_type: 'in_shop', house_call_address: '' }))
+    }
+  }, [form.location_type, houseCallAvailable])
 
   async function submitBooking() {
     setSubmitting(true); setSubmitError('')
@@ -404,14 +435,14 @@ export default function BookingClient() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
               {[
                 { type: 'in_shop' as const, icon: '✦', title: 'At the Studio', desc: 'Visit us at our Nairobi studio', available: true },
-                { type: 'house_call' as const, icon: '◎', title: 'House Call', desc: 'We come to you · Travel fee applies', available: !!svc?.house_call_available },
+                { type: 'house_call' as const, icon: '◎', title: 'House Call', desc: 'We come to you · Travel fee applies', available: houseCallAvailable, reason: houseCallBlockedReason },
               ].map(opt => (
                 <div key={opt.type} onClick={() => opt.available && set('location_type', opt.type)}
                   style={{ padding: '1.5rem 1.25rem', border: `1.5px solid ${form.location_type === opt.type ? css.gold : css.border}`, background: form.location_type === opt.type ? '#FEFBF5' : css.card, borderRadius: 2, cursor: opt.available ? 'pointer' : 'not-allowed', textAlign: 'center', opacity: opt.available ? 1 : 0.5, transition: 'all 0.15s' }}>
                   <div style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>{opt.icon}</div>
                   <div style={{ fontSize: '0.92rem', color: css.dark, fontWeight: 500, marginBottom: 4 }}>{opt.title}</div>
                   <div style={{ fontSize: '0.76rem', color: css.muted, lineHeight: 1.5 }}>{opt.desc}</div>
-                  {!opt.available && <div style={{ fontSize: '0.68rem', color: '#A09070', marginTop: 6 }}>Not available for this service</div>}
+                  {!opt.available && <div style={{ fontSize: '0.68rem', color: '#A09070', marginTop: 6 }}>{('reason' in opt && opt.reason) || 'Not available for this service'}</div>}
                   {form.location_type === opt.type && <div style={{ fontSize: '0.65rem', color: css.gold, marginTop: 8 }}>✓ Selected</div>}
                 </div>
               ))}

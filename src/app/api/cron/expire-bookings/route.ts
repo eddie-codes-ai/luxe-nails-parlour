@@ -1,7 +1,10 @@
 // src/app/api/cron/expire-bookings/route.ts
-// POST /api/cron/expire-bookings
-// Runs every 15 minutes via Vercel cron
-// Finds all pending_payment bookings past their expires_at and marks them expired
+// GET /api/cron/expire-bookings
+// Runs daily via Vercel cron (Hobby plan caps cron frequency).
+//
+// This is housekeeping only: slot availability no longer depends on it, since
+// lib/booking-holds evaluates expiry at read time. Its job is to keep the
+// stored status honest for the admin bookings list and reporting.
 
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
@@ -18,11 +21,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  // Find all bookings that are pending_payment and past their expiry time
+  // pending_approval was previously never expired, so an unanswered late-night
+  // request kept its slot marked as taken indefinitely.
   const { data: expired, error } = await supabase
     .from('bookings')
     .update({ status: 'expired' })
-    .eq('status', 'pending_payment')
+    .in('status', ['pending_payment', 'pending_approval'])
     .lt('expires_at', new Date().toISOString())
     .select('id')
 

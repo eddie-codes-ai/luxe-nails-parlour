@@ -4,6 +4,7 @@ import { sendEmail, OWNER_EMAIL } from '@/lib/resend'
 import { ownerNewBookingEmail, NewBookingEmailData } from '@/lib/email-templates'
 import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
+import { activeHolds } from '@/lib/booking-holds'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,6 +42,7 @@ interface ArtistRow {
   id: number
   name: string
   buffer_minutes: number
+  mobile_available?: boolean | null
 }
 
 interface ScheduleRow {
@@ -153,15 +155,34 @@ export async function POST(req: NextRequest) {
     // previous code skipped every availability check for unassigned bookings,
     // so a single slot could be booked without limit.
     let artistPool: ArtistRow[]
+    const isHouseCall = location_type === 'house_call'
+
     if (artist_id) {
       const { data, error: artistError } = await supabase
-        .from('artists').select('id, name, buffer_minutes').eq('id', artist_id).single()
+        .from('artists').select('id, name, buffer_minutes, mobile_available').eq('id', artist_id).single()
       if (artistError || !data) return NextResponse.json({ error: 'Artist not found' }, { status: 404 })
+
+      // Availability used to be gated on the service alone, so a
+      // storefront-only artist could be booked for a house call.
+      if (isHouseCall && !data.mobile_available) {
+        return NextResponse.json(
+          { error: `${data.name} only works at the studio and cannot take house calls. Please choose another artist or book in-studio.` },
+          { status: 400 }
+        )
+      }
       artistPool = [data]
     } else {
-      const { data, error: artistsError } = await supabase
-        .from('artists').select('id, name, buffer_minutes')
-      if (artistsError || !data?.length) return NextResponse.json({ error: 'No artists available' }, { status: 503 })
+      let query = supabase.from('artists').select('id, name, buffer_minutes, mobile_available')
+      if (isHouseCall) query = query.eq('mobile_available', true)
+
+      const { data, error: artistsError } = await query
+      if (artistsError || !data?.length) {
+        return NextResponse.json({
+          error: isHouseCall
+            ? 'No artists are available for house calls at the moment. Please book in-studio.'
+            : 'No artists available',
+        }, { status: 503 })
+      }
       artistPool = data
     }
     const artist = artist_id ? artistPool[0] : null
@@ -192,17 +213,21 @@ export async function POST(req: NextRequest) {
         }
         return NextResponse.json({ error: "Selected time is outside the artist's working hours" }, { status: 400 })
       }
-      return NextResponse.json({ error: 'No artist is working at that time. Please choose another slot.' }, { status: 400 })
+      return NextResponse.json({
+        error: isHouseCall
+          ? 'No house-call artist is working at that time. Please choose another slot or book in-studio.'
+          : 'No artist is working at that time. Please choose another slot.',
+      }, { status: 400 })
     }
 
     // All non-cancelled bookings on the date, so we can check both assigned
     // conflicts and how many unassigned bookings already claim this window.
     const { data: dayBookings } = await supabase
-      .from('bookings').select('artist_id, start_time, end_time')
+      .from('bookings').select('artist_id, start_time, end_time, status, expires_at')
       .eq('booking_date', booking_date)
       .not('status', 'in', '("declined","cancelled","expired")')
 
-    const bookingsOnDay = dayBookings ?? []
+    const bookingsOnDay = activeHolds(dayBookings)
 
     const freeCandidates = candidates.filter(c =>
       !bookingsOnDay.some(b =>

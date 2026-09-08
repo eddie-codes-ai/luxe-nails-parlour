@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
+import { activeHolds } from '@/lib/booking-holds'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -73,6 +74,7 @@ export async function GET(req: NextRequest) {
   const artistIdParam = searchParams.get('artistId')
   const date          = searchParams.get('date')
   const serviceId     = searchParams.get('serviceId')
+  const houseCall     = searchParams.get('locationType') === 'house_call'
 
   if (!artistIdParam || !date || !serviceId) {
     return NextResponse.json(
@@ -112,21 +114,35 @@ export async function GET(req: NextRequest) {
     let artists: { id: number; name: string; buffer_minutes: number }[] = []
 
     if (isAnyArtist) {
-      const { data, error } = await supabase
-        .from('artists')
-        .select('id, name, buffer_minutes')
+      let query = supabase.from('artists').select('id, name, buffer_minutes')
+      // House calls can only be served by artists flagged as mobile.
+      if (houseCall) query = query.eq('mobile_available', true)
+
+      const { data, error } = await query
       if (error || !data?.length) {
-        return NextResponse.json({ error: 'No artists found' }, { status: 404 })
+        return NextResponse.json({
+          error: houseCall
+            ? 'No artists are available for house calls right now.'
+            : 'No artists found',
+        }, { status: 404 })
       }
       artists = data
     } else {
       const { data, error } = await supabase
         .from('artists')
-        .select('id, name, buffer_minutes')
+        .select('id, name, buffer_minutes, mobile_available')
         .eq('id', Number(artistIdParam))
         .single()
       if (error || !data) {
         return NextResponse.json({ error: 'Artist not found' }, { status: 404 })
+      }
+      if (houseCall && !data.mobile_available) {
+        return NextResponse.json({
+          slots: [], artist_name: data.name,
+          service_name: '', service_duration: 0,
+          date, is_artist_available: false,
+          message: `${data.name} only works at the studio and cannot take house calls.`,
+        }, { status: 200 })
       }
       artists = [data]
     }
@@ -141,12 +157,16 @@ export async function GET(req: NextRequest) {
       .eq('schedule_date', date)
 
     // ── Fetch existing bookings for all artists on this date ───────────────────
-    const { data: existingBookings } = await supabase
+    const { data: dayBookings } = await supabase
       .from('bookings')
-      .select('artist_id, start_time, end_time')
+      .select('artist_id, start_time, end_time, status, expires_at')
       .in('artist_id', artistIds)
       .eq('booking_date', date)
       .not('status', 'in', '("declined","cancelled","expired")')
+
+    // Drops unpaid holds whose expires_at has passed but which the daily cron
+    // has not yet flipped to 'expired'.
+    const existingBookings = activeHolds(dayBookings)
 
     // ── Specific artist mode ───────────────────────────────────────────────────
     if (!isAnyArtist) {
