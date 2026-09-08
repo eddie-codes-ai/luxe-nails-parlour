@@ -1,5 +1,10 @@
 // Server component. Was "use client" solely for a resize listener feeding 8
 // isMobile branches; all of them are now md: classes.
+//
+// The cards previously carried cursor:pointer while being unclickable, and the
+// espresso hover background left the service name and price at 1:1 contrast -
+// literally invisible. They are now links, and the dark elements invert on
+// hover via `group`.
 
 import Link from "next/link";
 
@@ -88,10 +93,13 @@ export default function ServicesPreview() {
         {/* Service cards */}
         <div className="grid grid-cols-1 border border-sand md:grid-cols-3">
           {featured.map((service, index) => (
-            <div
+            <Link
               key={service.id}
+              href="/services"
+              aria-label={`${service.name} — from KES ${service.basePrice.toLocaleString()}`}
               className={[
-                "relative cursor-pointer px-6 py-8 transition-colors duration-[400ms] hover:bg-espresso md:p-10",
+                "group relative block px-6 py-8 no-underline transition-colors duration-[400ms] hover:bg-espresso md:p-10",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-gold",
                 index < 2 ? "border-b border-sand md:border-b-0 md:border-r" : "",
               ].join(" ")}
             >
@@ -103,11 +111,11 @@ export default function ServicesPreview() {
                 {service.category}
               </span>
 
-              <h3 className="mb-3 font-heading text-[28px] text-espresso">
+              <h3 className="mb-3 font-heading text-[28px] text-espresso transition-colors group-hover:text-cream">
                 {service.name}
               </h3>
 
-              <p className="mb-8 font-body text-sm leading-[1.6] text-espresso/55">
+              <p className="mb-8 font-body text-sm leading-[1.6] text-espresso/55 transition-colors group-hover:text-cream/60">
                 {service.tagline}
               </p>
 
@@ -116,11 +124,11 @@ export default function ServicesPreview() {
                   <p className="mb-1 font-body text-[10px] uppercase tracking-[0.2em] text-gold">
                     From
                   </p>
-                  <p className="font-heading text-2xl text-espresso">
+                  <p className="font-heading text-2xl text-espresso transition-colors group-hover:text-cream">
                     KES {service.basePrice.toLocaleString()}
                   </p>
                 </div>
-                <span className="font-body text-xs text-espresso/40">
+                <span className="font-body text-xs text-espresso/40 transition-colors group-hover:text-cream/40">
                   ~{service.duration} min
                 </span>
               </div>
@@ -133,7 +141,7 @@ export default function ServicesPreview() {
                   </span>
                 </div>
               )}
-            </div>
+            </Link>
           ))}
         </div>
 
