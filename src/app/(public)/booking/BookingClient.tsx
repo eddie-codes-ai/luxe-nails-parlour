@@ -82,13 +82,23 @@ function getNext60Days() {
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 
+// Same palette as /services, /gallery, /contact and /pay. The booking flow
+// used its own set (#F5F0E8 / #2C1A0E / #B8962E), which read as a different
+// brand on the highest-intent page in the funnel.
 const css = {
-  bg: '#F5F0E8',
-  dark: '#2C1A0E',
-  gold: '#B8962E',
-  muted: '#7A6A50',
-  border: '#D5C8B5',
-  card: '#FDFAF5',
+  bg: '#FDFBF7',                  // cream
+  dark: '#2D2424',                // espresso
+  gold: '#C5A358',
+  muted: 'rgba(45,36,36,0.55)',
+  border: '#E5E0D8',              // sand
+  card: '#FFFFFF',
+  subtle: 'rgba(45,36,36,0.35)',  // was rgba(45,36,36,0.35)
+  disabled: '#E5E0D8',            // was #C8BBA8
+}
+
+const fonts = {
+  heading: "'Cormorant Garamond', Georgia, serif",
+  body: "'Jost', 'Helvetica Neue', sans-serif",
 }
 
 function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
@@ -113,10 +123,10 @@ function Btn({ children, onClick, disabled, ghost, full }: { children: React.Rea
   const base: React.CSSProperties = {
     padding: '0.9rem 2.2rem', fontSize: '0.68rem', letterSpacing: '0.14em',
     textTransform: 'uppercase' as const, cursor: disabled ? 'not-allowed' : 'pointer',
-    fontWeight: 600, borderRadius: 2, transition: 'all 0.2s', fontFamily: 'Georgia, serif',
+    fontWeight: 600, borderRadius: 2, transition: 'all 0.2s', fontFamily: fonts.body,
     width: full ? '100%' : undefined,
   }
-  const filled: React.CSSProperties = { ...base, background: disabled ? '#C8BBA8' : css.dark, color: css.bg, border: 'none' }
+  const filled: React.CSSProperties = { ...base, background: disabled ? css.disabled : css.dark, color: css.bg, border: 'none' }
   const outline: React.CSSProperties = { ...base, background: 'transparent', color: css.muted, border: `1px solid ${css.border}` }
   return (
     <button onClick={onClick} disabled={disabled} style={ghost ? outline : filled}
@@ -141,11 +151,11 @@ function Steps({ current }: { current: number }) {
               background: current === s.n ? css.gold : current > s.n ? css.dark : 'transparent',
               border: `1.5px solid ${current >= s.n ? (current === s.n ? css.gold : css.dark) : css.border}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: current >= s.n ? css.bg : '#A09070', fontSize: '0.72rem', fontWeight: 500,
+              color: current >= s.n ? css.bg : css.subtle, fontSize: '0.72rem', fontWeight: 500,
             }}>
               {current > s.n ? '✓' : s.n}
             </div>
-            <span style={{ fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: current === s.n ? css.gold : current > s.n ? css.dark : '#A09070', whiteSpace: 'nowrap' as const, fontWeight: current === s.n ? 600 : 400 }}>{s.l}</span>
+            <span style={{ fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase' as const, color: current === s.n ? css.gold : current > s.n ? css.dark : css.subtle, whiteSpace: 'nowrap' as const, fontWeight: current === s.n ? 600 : 400 }}>{s.l}</span>
           </div>
           {i < steps.length - 1 && <div style={{ height: 1, width: 32, background: current > s.n ? css.dark : css.border, marginBottom: '1rem', flexShrink: 0 }} />}
         </div>
@@ -295,13 +305,13 @@ export default function BookingClient() {
   const days = getNext60Days()
 
   return (
-    <div style={{ minHeight: '100vh', background: css.bg, fontFamily: 'Georgia, serif' }}>
+    <div style={{ minHeight: '100vh', background: css.bg, fontFamily: fonts.body, color: css.dark }}>
 
       {/* Hero */}
       <div style={{ background: css.dark, padding: '4rem 2rem 3rem', textAlign: 'center' }}>
         <p style={{ color: css.gold, fontSize: '0.62rem', letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: '0.9rem' }}>Reserve Your Spot</p>
-        <h1 style={{ color: css.bg, fontSize: 'clamp(2rem,5vw,3.2rem)', fontWeight: 400, margin: '0 0 1rem', lineHeight: 1.1 }}>Book an Appointment</h1>
-        <p style={{ color: '#A09070', fontSize: '0.92rem', maxWidth: 460, margin: '0 auto', lineHeight: 1.7 }}>
+        <h1 style={{ fontFamily: fonts.heading, color: css.bg, fontSize: 'clamp(2rem,5vw,3.2rem)', fontWeight: 300, margin: '0 0 1rem', lineHeight: 1.1 }}>Book an Appointment</h1>
+        <p style={{ color: css.subtle, fontSize: '0.92rem', maxWidth: 460, margin: '0 auto', lineHeight: 1.7 }}>
           Select your service, pick your artist, and secure your slot with a deposit.
         </p>
       </div>
@@ -312,17 +322,17 @@ export default function BookingClient() {
         {/* ── STEP 1: Service & Artist ── */}
         {step === 1 && (
           <div>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Choose Your Service</h2>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Choose Your Service</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>Select the service you'd like and your preferred artist.</p>
 
             <div style={{ marginBottom: '2.5rem' }}>
               <Label required>Service</Label>
               {services.length === 0
-                ? <p style={{ color: '#A09070', fontSize: '0.85rem', fontStyle: 'italic' }}>Loading services...</p>
+                ? <p style={{ color: css.subtle, fontSize: '0.85rem', fontStyle: 'italic' }}>Loading services...</p>
                 : <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {services.map(s => (
                       <div key={s.id} onClick={() => { set('service_id', s.id); set('start_time', '') }}
-                        style={{ padding: '1rem 1.25rem', border: `1.5px solid ${form.service_id === s.id ? css.gold : css.border}`, background: form.service_id === s.id ? '#FEFBF5' : css.card, borderRadius: 2, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.15s' }}>
+                        style={{ padding: '1rem 1.25rem', border: `1.5px solid ${form.service_id === s.id ? css.gold : css.border}`, background: form.service_id === s.id ? '#FDF8EE' : css.card, borderRadius: 2, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.15s' }}>
                         <div>
                           <div style={{ fontSize: '0.95rem', color: css.dark, fontWeight: 500 }}>{s.name}</div>
                           <div style={{ fontSize: '0.78rem', color: css.muted, marginTop: 2 }}>
@@ -344,14 +354,14 @@ export default function BookingClient() {
               <Label>Preferred Artist</Label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: '0.75rem' }}>
                 <div onClick={() => set('artist_id', null)}
-                  style={{ padding: '1rem', border: `1.5px solid ${form.artist_id === null ? css.gold : css.border}`, background: form.artist_id === null ? '#FEFBF5' : css.card, borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+                  style={{ padding: '1rem', border: `1.5px solid ${form.artist_id === null ? css.gold : css.border}`, background: form.artist_id === null ? '#FDF8EE' : css.card, borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
                   <div style={{ fontSize: '1.6rem', marginBottom: 4 }}>✦</div>
                   <div style={{ fontSize: '0.8rem', color: css.dark, fontWeight: 500 }}>No Preference</div>
                   <div style={{ fontSize: '0.68rem', color: css.muted, marginTop: 2 }}>Owner assigns</div>
                 </div>
                 {artists.map(a => (
                   <div key={a.id} onClick={() => set('artist_id', a.id)}
-                    style={{ padding: '1rem', border: `1.5px solid ${form.artist_id === a.id ? css.gold : css.border}`, background: form.artist_id === a.id ? '#FEFBF5' : css.card, borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
+                    style={{ padding: '1rem', border: `1.5px solid ${form.artist_id === a.id ? css.gold : css.border}`, background: form.artist_id === a.id ? '#FDF8EE' : css.card, borderRadius: 2, cursor: 'pointer', textAlign: 'center', transition: 'all 0.15s' }}>
                     {a.photo_url
                       ? <img src={a.photo_url} alt={a.name} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', marginBottom: 6 }} />
                       : <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#E8DFC8', margin: '0 auto 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', color: css.gold }}>{a.name.charAt(0)}</div>
@@ -373,7 +383,7 @@ export default function BookingClient() {
         {/* ── STEP 2: Add-ons ── */}
         {step === 2 && (
           <div>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Make It Yours</h2>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Make It Yours</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>
               {availableAddOns.length
                 ? 'Optional extras for your ' + (svc?.name ?? 'service') + '. Skip any you don’t want.'
@@ -386,7 +396,7 @@ export default function BookingClient() {
                   const checked = form.add_ons.includes(a.name)
                   return (
                     <div key={a.name} onClick={() => toggleAddOn(a.name)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '1rem 1.15rem', border: `1.5px solid ${checked ? css.gold : css.border}`, background: checked ? '#FEFBF5' : css.card, borderRadius: 2, cursor: 'pointer', transition: 'all 0.15s' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', padding: '1rem 1.15rem', border: `1.5px solid ${checked ? css.gold : css.border}`, background: checked ? '#FDF8EE' : css.card, borderRadius: 2, cursor: 'pointer', transition: 'all 0.15s' }}>
                       <div style={{ width: 20, height: 20, flexShrink: 0, borderRadius: 2, border: `1.5px solid ${checked ? css.gold : css.border}`, background: checked ? css.gold : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: css.bg, fontSize: '0.7rem' }}>
                         {checked && '✓'}
                       </div>
@@ -428,7 +438,7 @@ export default function BookingClient() {
         {/* ── STEP 3: Date & Time ── */}
         {step === 3 && (
           <div>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Pick a Date & Time</h2>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Pick a Date & Time</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>
               {svc?.name} · {svc?.duration_minutes} min{art ? ` · ${art.name}` : ' · Any artist'}
             </p>
@@ -443,9 +453,9 @@ export default function BookingClient() {
                   return (
                     <div key={iso} onClick={() => set('booking_date', iso)}
                       style={{ minWidth: 52, padding: '0.7rem 0.4rem', border: `1.5px solid ${sel ? css.gold : css.border}`, background: sel ? css.dark : css.card, borderRadius: 2, cursor: 'pointer', textAlign: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                      <div style={{ fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: sel ? css.gold : '#A09070' }}>{d.toLocaleDateString('en-KE', { weekday: 'short' })}</div>
+                      <div style={{ fontSize: '0.55rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: sel ? css.gold : css.subtle }}>{d.toLocaleDateString('en-KE', { weekday: 'short' })}</div>
                       <div style={{ fontSize: '1.15rem', color: sel ? css.bg : css.dark, fontWeight: 500, margin: '2px 0' }}>{d.getDate()}</div>
-                      <div style={{ fontSize: '0.55rem', color: '#A09070', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.toLocaleDateString('en-KE', { month: 'short' })}</div>
+                      <div style={{ fontSize: '0.55rem', color: css.subtle, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.toLocaleDateString('en-KE', { month: 'short' })}</div>
                     </div>
                   )
                 })}
@@ -456,8 +466,8 @@ export default function BookingClient() {
             {form.booking_date && (
               <div style={{ marginBottom: '2rem' }}>
                 <Label required>Preferred Time</Label>
-                {slotsLoading && <p style={{ color: '#A09070', fontSize: '0.85rem', fontStyle: 'italic' }}>Loading available times...</p>}
-                {slotsError && <div style={{ padding: '0.75rem 1rem', background: '#FEF6F0', border: `1px solid #F0C8A0`, borderRadius: 2, color: '#8B4513', fontSize: '0.85rem' }}>{slotsError}</div>}
+                {slotsLoading && <p style={{ color: css.subtle, fontSize: '0.85rem', fontStyle: 'italic' }}>Loading available times...</p>}
+                {slotsError && <div style={{ padding: '0.75rem 1rem', background: '#FEF6F0', border: `1px solid #F0C8A0`, borderRadius: 2, color: '#8B5A3C', fontSize: '0.85rem' }}>{slotsError}</div>}
                 {!slotsLoading && !slotsError && slots.length > 0 && (
                   <>
                     {/* Normal slots */}
@@ -467,7 +477,7 @@ export default function BookingClient() {
                           <div key={sl.start_time}
                             onClick={() => sl.status === 'available' && set('start_time', sl.start_time)}
                             style={{ padding: '0.75rem', border: `1.5px solid ${form.start_time === sl.start_time ? css.gold : css.border}`, background: form.start_time === sl.start_time ? css.dark : css.card, borderRadius: 2, textAlign: 'center', cursor: sl.status === 'available' ? 'pointer' : 'not-allowed', opacity: sl.status === 'taken' ? 0.4 : 1, transition: 'all 0.15s' }}>
-                            <span style={{ fontSize: '0.85rem', color: form.start_time === sl.start_time ? css.bg : sl.status === 'taken' ? '#A09070' : css.dark, textDecoration: sl.status === 'taken' ? 'line-through' : 'none' }}>{sl.display_time}</span>
+                            <span style={{ fontSize: '0.85rem', color: form.start_time === sl.start_time ? css.bg : sl.status === 'taken' ? css.subtle : css.dark, textDecoration: sl.status === 'taken' ? 'line-through' : 'none' }}>{sl.display_time}</span>
                           </div>
                         ))}
                       </div>
@@ -488,7 +498,7 @@ export default function BookingClient() {
                           {slots.filter(s => s.is_late_night).map(sl => (
                             <div key={sl.start_time}
                               onClick={() => sl.status !== 'taken' && set('start_time', sl.start_time)}
-                              style={{ padding: '0.75rem', border: `1.5px dashed ${form.start_time === sl.start_time ? css.gold : '#C8BBA8'}`, background: form.start_time === sl.start_time ? '#FDF5E0' : css.card, borderRadius: 2, textAlign: 'center', cursor: sl.status === 'taken' ? 'not-allowed' : 'pointer', opacity: sl.status === 'taken' ? 0.4 : 1, transition: 'all 0.15s' }}>
+                              style={{ padding: '0.75rem', border: `1.5px dashed ${form.start_time === sl.start_time ? css.gold : css.disabled}`, background: form.start_time === sl.start_time ? '#FDF5E0' : css.card, borderRadius: 2, textAlign: 'center', cursor: sl.status === 'taken' ? 'not-allowed' : 'pointer', opacity: sl.status === 'taken' ? 0.4 : 1, transition: 'all 0.15s' }}>
                               <span style={{ fontSize: '0.85rem', color: form.start_time === sl.start_time ? css.gold : css.muted }}>{sl.display_time}</span>
                               <div style={{ fontSize: '0.58rem', color: css.gold, marginTop: 2, letterSpacing: '0.06em' }}>request</div>
                             </div>
@@ -498,7 +508,7 @@ export default function BookingClient() {
                     )}
 
                     {slots.every(s => s.status === 'taken') && (
-                      <p style={{ color: '#8B4513', fontSize: '0.85rem', fontStyle: 'italic' }}>No available slots on this date. Please try another day.</p>
+                      <p style={{ color: '#8B5A3C', fontSize: '0.85rem', fontStyle: 'italic' }}>No available slots on this date. Please try another day.</p>
                     )}
                   </>
                 )}
@@ -515,7 +525,7 @@ export default function BookingClient() {
         {/* ── STEP 4: Location ── */}
         {step === 4 && (
           <div>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Service Location</h2>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Service Location</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>Where would you like your appointment?</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '2rem' }}>
@@ -524,11 +534,11 @@ export default function BookingClient() {
                 { type: 'house_call' as const, icon: '◎', title: 'House Call', desc: 'We come to you · Travel fee applies', available: houseCallAvailable, reason: houseCallBlockedReason },
               ].map(opt => (
                 <div key={opt.type} onClick={() => opt.available && set('location_type', opt.type)}
-                  style={{ padding: '1.5rem 1.25rem', border: `1.5px solid ${form.location_type === opt.type ? css.gold : css.border}`, background: form.location_type === opt.type ? '#FEFBF5' : css.card, borderRadius: 2, cursor: opt.available ? 'pointer' : 'not-allowed', textAlign: 'center', opacity: opt.available ? 1 : 0.5, transition: 'all 0.15s' }}>
+                  style={{ padding: '1.5rem 1.25rem', border: `1.5px solid ${form.location_type === opt.type ? css.gold : css.border}`, background: form.location_type === opt.type ? '#FDF8EE' : css.card, borderRadius: 2, cursor: opt.available ? 'pointer' : 'not-allowed', textAlign: 'center', opacity: opt.available ? 1 : 0.5, transition: 'all 0.15s' }}>
                   <div style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>{opt.icon}</div>
                   <div style={{ fontSize: '0.92rem', color: css.dark, fontWeight: 500, marginBottom: 4 }}>{opt.title}</div>
                   <div style={{ fontSize: '0.76rem', color: css.muted, lineHeight: 1.5 }}>{opt.desc}</div>
-                  {!opt.available && <div style={{ fontSize: '0.68rem', color: '#A09070', marginTop: 6 }}>{('reason' in opt && opt.reason) || 'Not available for this service'}</div>}
+                  {!opt.available && <div style={{ fontSize: '0.68rem', color: css.subtle, marginTop: 6 }}>{('reason' in opt && opt.reason) || 'Not available for this service'}</div>}
                   {form.location_type === opt.type && <div style={{ fontSize: '0.65rem', color: css.gold, marginTop: 8 }}>✓ Selected</div>}
                 </div>
               ))}
@@ -539,7 +549,7 @@ export default function BookingClient() {
                 <Label required>Your Address</Label>
                 <textarea value={form.house_call_address} onChange={e => set('house_call_address', e.target.value)}
                   placeholder="e.g. 14 Westlands Road, Westlands, Nairobi" rows={3}
-                  style={{ width: '100%', padding: '0.75rem 1rem', background: css.card, border: `1px solid ${css.border}`, borderRadius: 2, fontSize: '0.95rem', color: css.dark, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'Georgia, serif', lineHeight: 1.6 }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', background: css.card, border: `1px solid ${css.border}`, borderRadius: 2, fontSize: '0.95rem', color: css.dark, outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: fonts.body, lineHeight: 1.6 }}
                   onFocus={e => e.target.style.borderColor = css.gold}
                   onBlur={e => e.target.style.borderColor = css.border}
                 />
@@ -557,7 +567,7 @@ export default function BookingClient() {
         {/* ── STEP 5: Details ── */}
         {step === 5 && (
           <div>
-            <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Your Details</h2>
+            <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Your Details</h2>
             <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>We'll use these to confirm your booking and send reminders.</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem' }}>
@@ -604,7 +614,7 @@ export default function BookingClient() {
             {created.is_late_night ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ fontSize: '2.5rem', color: css.gold, marginBottom: '1rem' }}>✦</div>
-                <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.75rem' }}>Request Submitted</h2>
+                <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.75rem' }}>Request Submitted</h2>
                 <p style={{ color: css.muted, fontSize: '0.92rem', lineHeight: 1.7, maxWidth: 420, margin: '0 auto 1.5rem' }}>
                   Your late-night slot request has been sent. The artist will confirm availability and reach out on WhatsApp before requesting payment.
                 </p>
@@ -615,15 +625,15 @@ export default function BookingClient() {
             ) : mpesaDone ? (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ fontSize: '2.5rem', color: css.gold, marginBottom: '1rem' }}>✓</div>
-                <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.75rem' }}>Reference Received</h2>
+                <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.75rem' }}>Reference Received</h2>
                 <p style={{ color: css.muted, fontSize: '0.92rem', lineHeight: 1.7, maxWidth: 420, margin: '0 auto 1.5rem' }}>
                   The owner will verify your M-Pesa payment and confirm your booking. You'll be notified on WhatsApp.
                 </p>
-                <p style={{ color: '#A09070', fontSize: '0.78rem' }}>Reference: <strong style={{ color: css.dark }}>{mpesaRef}</strong></p>
+                <p style={{ color: css.subtle, fontSize: '0.78rem' }}>Reference: <strong style={{ color: css.dark }}>{mpesaRef}</strong></p>
               </div>
             ) : (
               <div>
-                <h2 style={{ fontSize: '1.55rem', fontWeight: 400, color: css.dark, marginBottom: '0.4rem' }}>Secure Your Slot</h2>
+                <h2 style={{ fontFamily: fonts.heading, fontSize: '1.9rem', fontWeight: 300, color: css.dark, marginBottom: '0.4rem' }}>Secure Your Slot</h2>
                 <p style={{ color: css.muted, fontSize: '0.88rem', marginBottom: '2rem' }}>
                   Slot reserved for <strong style={{ color: css.dark }}>1 hour</strong>. Pay the deposit to confirm.
                 </p>
