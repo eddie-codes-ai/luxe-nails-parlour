@@ -298,6 +298,7 @@ export async function POST(req: NextRequest) {
         startMins,
         endMins: Math.max(...freeCandidates.map(c => c.endMins)),
         durationMins: service.duration_minutes,
+        minStorefrontStaff: Number(settings?.min_storefront_staff ?? 1),
       })
 
       if (!staffing.canAddHouseCall) {

@@ -12,8 +12,26 @@
 import { resolveHours, startBounds, timeToMins, type ScheduleOverride, type WorkingHours } from './working-hours'
 import { holdsSlot, type SlotHold } from './booking-holds'
 
-/** Minimum technicians who must remain at the storefront. */
-export const MIN_STOREFRONT_STAFF = 1
+/** Fallback when booking_settings has no value (or the column is absent). */
+export const DEFAULT_MIN_STOREFRONT_STAFF = 1
+
+/**
+ * How many technicians must remain at the storefront, from booking_settings.
+ * The roster size itself is never configured here - it is read live from the
+ * artists table, so hiring or losing staff needs no code or settings change.
+ */
+export async function getMinStorefrontStaff(
+  supabase: { from: (t: string) => any }
+): Promise<number> {
+  try {
+    // select('*') so this keeps working before the migration is applied.
+    const { data } = await supabase.from('booking_settings').select('*').eq('id', 1).single()
+    const value = Number(data?.min_storefront_staff)
+    return Number.isFinite(value) && value >= 0 ? value : DEFAULT_MIN_STOREFRONT_STAFF
+  } catch {
+    return DEFAULT_MIN_STOREFRONT_STAFF
+  }
+}
 
 export interface StaffingBooking extends SlotHold {
   artist_id: number | null
@@ -33,6 +51,8 @@ export interface StaffingInput {
   startMins: number
   endMins: number
   durationMins: number
+  /** Technicians who must remain in the studio. Defaults to 1. */
+  minStorefrontStaff?: number
 }
 
 export interface StaffingResult {
@@ -49,7 +69,11 @@ function overlaps(aStart: number, aEnd: number, bStart: number, bEnd: number) {
 }
 
 export function checkStaffing(input: StaffingInput): StaffingResult {
-  const { allArtists, schedules, defaultHours, dayBookings, startMins, endMins, durationMins } = input
+  const {
+    allArtists, schedules, defaultHours, dayBookings,
+    startMins, endMins, durationMins,
+    minStorefrontStaff = DEFAULT_MIN_STOREFRONT_STAFF,
+  } = input
 
   const working = allArtists.filter(a => {
     const schedule = schedules?.find(s => s.artist_id === a.id) ?? null
@@ -68,6 +92,6 @@ export function checkStaffing(input: StaffingInput): StaffingResult {
     working,
     houseCallsOut,
     // One more artist leaves for a house call: does anyone remain in the shop?
-    canAddHouseCall: working - houseCallsOut - 1 >= MIN_STOREFRONT_STAFF,
+    canAddHouseCall: working - houseCallsOut - 1 >= minStorefrontStaff,
   }
 }

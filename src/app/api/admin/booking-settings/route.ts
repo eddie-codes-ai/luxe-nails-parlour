@@ -49,6 +49,7 @@ export async function PATCH(req: NextRequest) {
     default_end_time,
     default_late_cutoff_time,
     default_late_end_time,
+    min_storefront_staff,
   } = body
 
   const base = {
@@ -69,6 +70,7 @@ export async function PATCH(req: NextRequest) {
     // Blank clears late-night entirely rather than falling back to a default.
     default_late_cutoff_time: default_late_cutoff_time || null,
     default_late_end_time:    default_late_end_time || null,
+    min_storefront_staff:     Number(min_storefront_staff ?? 1),
   }
 
   const { error } = await supabase

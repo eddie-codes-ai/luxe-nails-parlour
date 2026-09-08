@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { isPastDate, isToday, salonNowMinutes } from '@/lib/salon-time'
 import { activeHolds } from '@/lib/booking-holds'
 import { getDefaultHours, isLateStart, resolveHours, startBounds } from '@/lib/working-hours'
-import { checkStaffing } from '@/lib/staffing'
+import { checkStaffing, getMinStorefrontStaff } from '@/lib/staffing'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -175,7 +175,9 @@ export async function GET(req: NextRequest) {
     // docs/04 §3 — a house call must leave someone at the storefront.
     let roster: { id: number }[] = []
     let rosterSchedules: { artist_id: number }[] | null = null
+    let minStorefrontStaff = 1
     if (houseCall) {
+      minStorefrontStaff = await getMinStorefrontStaff(supabase)
       const { data: r } = await supabase.from('artists').select('id')
       roster = r ?? []
       const { data: rs } = await supabase
@@ -194,6 +196,7 @@ export async function GET(req: NextRequest) {
         startMins: slotStart,
         endMins: slotEnd,
         durationMins: service.duration_minutes,
+        minStorefrontStaff,
       }).canAddHouseCall
 
     // ── Specific artist mode ───────────────────────────────────────────────────

@@ -18,6 +18,7 @@ interface BookingSettings {
   default_end_time:             string
   default_late_cutoff_time:     string
   default_late_end_time:        string
+  min_storefront_staff:         number
 }
 
 const c = {
@@ -102,6 +103,7 @@ export default function BookingSettingsClient() {
     default_end_time:             '20:00',
     default_late_cutoff_time:     '20:00',
     default_late_end_time:        '22:00',
+    min_storefront_staff:         1,
   })
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
@@ -123,6 +125,7 @@ export default function BookingSettingsClient() {
           default_end_time:         d.settings.default_end_time ?? prev.default_end_time,
           default_late_cutoff_time: d.settings.default_late_cutoff_time ?? '',
           default_late_end_time:    d.settings.default_late_end_time ?? '',
+          min_storefront_staff:     d.settings.min_storefront_staff ?? prev.min_storefront_staff,
         }))
       })
       .catch(() => setError('Failed to load settings'))
@@ -268,6 +271,26 @@ export default function BookingSettingsClient() {
               <Input type="time" value={settings.default_late_end_time} onChange={v => set('default_late_end_time', v)} />
               <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>The latest an appointment may start. Long services will run past it.</p>
             </div>
+          </div>
+        </SectionCard>
+
+        {/* House calls */}
+        <SectionCard
+          title="House calls"
+          description="Keeps the studio covered when artists go out to customers"
+        >
+          <div>
+            <Label>Technicians who must stay at the studio</Label>
+            <Input
+              type="number"
+              value={settings.min_storefront_staff}
+              onChange={v => set('min_storefront_staff', v)}
+            />
+            <p style={{ margin: '6px 0 0', fontSize: 11, color: c.muted }}>
+              A house call is refused if accepting it would drop the studio below this number.
+              Your team size is read automatically from Artists — you never need to enter it.
+              Set 0 to allow everyone out at once.
+            </p>
           </div>
         </SectionCard>
 
