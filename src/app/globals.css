@@ -34,8 +34,8 @@
   /* Hero ornament: a ring of polish swatches orbiting a rotating bottle.
    * Both turn the same way at different speeds — the difference in speed is
    * what separates them visually. Pure CSS 3D, no library, no model file. */
-  --animate-orbit: orbit 16s linear infinite;
-  --animate-bottle: orbit 11s linear infinite;
+  --animate-orbit: orbit 11s linear infinite;
+  --animate-bottle: orbit 7.5s linear infinite;
 
   @keyframes rise-in {
     from { opacity: 0; transform: translateY(24px); }
