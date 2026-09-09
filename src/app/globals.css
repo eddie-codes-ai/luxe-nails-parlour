@@ -31,9 +31,19 @@
    * the homepage had no visible heading at all. As CSS it plays regardless. */
   --animate-rise-in: rise-in 0.7s ease both;
 
+  /* Hero ornament: a ring of polish swatches orbiting a rotating bottle.
+   * Both turn the same way at different speeds — the difference in speed is
+   * what separates them visually. Pure CSS 3D, no library, no model file. */
+  --animate-orbit: orbit 16s linear infinite;
+  --animate-bottle: orbit 11s linear infinite;
+
   @keyframes rise-in {
     from { opacity: 0; transform: translateY(24px); }
     to   { opacity: 1; transform: none; }
+  }
+
+  @keyframes orbit {
+    to { transform: rotateY(-360deg); }
   }
 }
 
@@ -44,6 +54,23 @@
     animation: none;
     opacity: 1;
     transform: none;
+  }
+  /* The ornament holds still rather than spinning. */
+  .animate-orbit,
+  .animate-bottle {
+    animation: none;
+  }
+}
+
+/* 3D context for the hero ornament. Tailwind has no utility that sets both
+   perspective on the parent and preserve-3d on the children. */
+@layer components {
+  .scene-3d {
+    perspective: 900px;
+  }
+  .scene-3d .animate-orbit,
+  .scene-3d .animate-bottle {
+    transform-style: preserve-3d;
   }
 }
 

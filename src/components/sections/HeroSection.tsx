@@ -7,6 +7,9 @@
 
 import Link from "next/link";
 
+/** Brand shades on the orbiting ring. */
+const POLISHES = ["#C5A358", "#D4A09A", "#C47B5A", "#8B3A4A", "#2D2424"];
+
 const stats = [
   { number: "8+", label: "Years of Excellence" },
   { number: "5", label: "Expert Artists" },
@@ -20,6 +23,52 @@ export default function HeroSection() {
       <div className="pointer-events-none absolute right-1/4 top-1/4 h-[400px] w-[400px] rounded-full bg-gold/[0.12] blur-[80px]" />
       {/* Rose glow */}
       <div className="pointer-events-none absolute bottom-[30%] left-[30%] h-[280px] w-[280px] rounded-full bg-rose/[0.15] blur-[80px]" />
+
+      {/* Polish bottle turning inside a ring of orbiting shades. Pure CSS 3D —
+          no library, no model, nothing extra downloaded.
+          Only from xl (1280px), which is where the 720px text column stops
+          claiming the right-hand side: measured at 768px and 1024px it sits
+          behind the headline. Below that it is not rendered at all, so narrow
+          and mobile visitors fetch nothing for it. */}
+      <div
+        aria-hidden="true"
+        className="scene-3d pointer-events-none absolute right-[7%] top-1/2 z-0 hidden -translate-y-1/2 xl:block"
+      >
+        <div className="relative flex h-[320px] w-[320px] items-center justify-center">
+          <div className="animate-orbit absolute inset-0">
+            {POLISHES.map((colour, i) => (
+              <div
+                key={colour}
+                className="absolute left-1/2 top-1/2 h-[46px] w-[46px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-cream shadow-lg"
+                style={{
+                  background: colour,
+                  transform: `rotateY(${i * (360 / POLISHES.length)}deg) translateZ(128px)`,
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="animate-bottle relative h-[160px] w-[76px]">
+            {[0, 90, 180, 270].map((deg) => (
+              <div
+                key={deg}
+                className="absolute inset-0 rounded-[6px] border border-espresso/10"
+                style={{
+                  transform: `rotateY(${deg}deg) translateZ(38px)`,
+                  background:
+                    deg % 180 === 0
+                      ? "linear-gradient(160deg,#D4A09A,#8B3A4A)"
+                      : "linear-gradient(160deg,#C08E88,#6E2C39)",
+                }}
+              />
+            ))}
+            <div
+              className="absolute left-1/2 h-[44px] w-[28px] -translate-x-1/2 rounded-[3px] bg-espresso"
+              style={{ top: -38 }}
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="relative z-10 mx-auto w-full max-w-[1280px] px-6 pb-[120px] pt-[100px] md:px-12 md:pb-20 md:pt-32">
         <div className="max-w-[720px]">
