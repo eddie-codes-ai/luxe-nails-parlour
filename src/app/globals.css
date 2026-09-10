@@ -69,7 +69,8 @@
     perspective: 900px;
   }
   .scene-3d .animate-orbit,
-  .scene-3d .animate-bottle {
+  .scene-3d .animate-bottle,
+  .scene-3d .preserve-3d {
     transform-style: preserve-3d;
   }
 }

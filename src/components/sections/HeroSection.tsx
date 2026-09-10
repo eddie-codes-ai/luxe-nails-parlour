@@ -48,25 +48,84 @@ export default function HeroSection() {
             ))}
           </div>
 
-          <div className="animate-bottle relative h-[160px] w-[76px]">
-            {[0, 90, 180, 270].map((deg) => (
-              <div
-                key={deg}
-                className="absolute inset-0 rounded-[6px] border border-espresso/10"
-                style={{
-                  transform: `rotateY(${deg}deg) translateZ(38px)`,
-                  background:
-                    deg % 180 === 0
-                      ? "linear-gradient(160deg,#D4A09A,#8B3A4A)"
-                      : "linear-gradient(160deg,#C08E88,#6E2C39)",
-                }}
-              />
-            ))}
+          {/* Bottle. Cap, collar and body are each their own 4-sided box in
+              the same 3D space, so the whole thing turns as one object rather
+              than a flat sticker riding on a spinning rectangle. */}
+          <div className="animate-bottle relative h-[122px] w-[84px]">
+
+            {/* Cap — ridged, tapering slightly, sitting above the collar */}
             <div
-              className="absolute left-1/2 h-[44px] w-[28px] -translate-x-1/2 rounded-[3px] bg-espresso"
-              style={{ top: -38 }}
-            />
+              className="preserve-3d absolute left-1/2 -translate-x-1/2"
+              style={{ top: -64, width: 38, height: 54 }}
+            >
+              {[0, 90, 180, 270].map((deg) => (
+                <div
+                  key={deg}
+                  className="absolute inset-0 rounded-[3px]"
+                  style={{
+                    transform: `rotateY(${deg}deg) translateZ(19px)`,
+                    backgroundImage: [
+                      "repeating-linear-gradient(90deg, rgba(255,255,255,0.07) 0 1px, transparent 1px 4px)",
+                      "linear-gradient(90deg, rgba(255,255,255,0.30) 6%, rgba(255,255,255,0.05) 26%, rgba(0,0,0,0.25) 78%, rgba(0,0,0,0.42) 100%)",
+                      "linear-gradient(180deg, #3A2E2E 0%, #241C1C 100%)",
+                    ].join(","),
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Collar — thin metal band where the cap meets the glass */}
+            <div
+              className="preserve-3d absolute left-1/2 -translate-x-1/2"
+              style={{ top: -10, width: 46, height: 10 }}
+            >
+              {[0, 90, 180, 270].map((deg) => (
+                <div
+                  key={deg}
+                  className="absolute inset-0"
+                  style={{
+                    transform: `rotateY(${deg}deg) translateZ(23px)`,
+                    backgroundImage:
+                      "linear-gradient(90deg,#7C5F2C 0%,#E8D7A6 18%,#C5A358 46%,#8A6D33 82%,#5F4720 100%)",
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Glass body — clear shoulder above, polish below, lit from the left */}
+            {[0, 90, 180, 270].map((deg) => {
+              const facing = deg % 180 === 0;
+              return (
+                <div
+                  key={deg}
+                  className="absolute inset-0"
+                  style={{
+                    transform: `rotateY(${deg}deg) translateZ(42px)`,
+                    borderRadius: "12px 12px 6px 6px",
+                    backgroundImage: [
+                      // specular streak down the left, shading down the right
+                      "linear-gradient(90deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.34) 14%, rgba(255,255,255,0.12) 32%, rgba(255,255,255,0) 55%, rgba(0,0,0,0.10) 82%, rgba(0,0,0,0.20) 100%)",
+                      // empty glass shoulder, meniscus, then the polish
+                      `linear-gradient(180deg,
+                        rgba(247,240,235,0.92) 0%,
+                        rgba(247,240,235,0.72) 15%,
+                        rgba(255,255,255,0.50) 19%,
+                        ${facing ? "#DCAEA8" : "#C0918C"} 22%,
+                        ${facing ? "#B4636E" : "#8E4A55"} 40%,
+                        ${facing ? "#8B3A4A" : "#6E2C39"} 100%)`,
+                    ].join(","),
+                    boxShadow: "inset 0 -6px 12px rgba(0,0,0,0.22)",
+                  }}
+                />
+              );
+            })}
           </div>
+
+          {/* Contact shadow — outside the rotating group so it stays put */}
+          <div
+            className="pointer-events-none absolute left-1/2 h-[14px] w-[112px] -translate-x-1/2 rounded-[50%] bg-espresso/25 blur-[9px]"
+            style={{ top: "calc(50% + 62px)" }}
+          />
         </div>
       </div>
 
